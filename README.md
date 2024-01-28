@@ -1,4 +1,4 @@
-# Mapping Seagrass app
+# Malaria Prevention Modeling App
 
 ## Docker
 
