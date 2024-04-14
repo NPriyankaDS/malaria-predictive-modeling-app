@@ -75,3 +75,7 @@ zipp==3.17.0
 pycaret
 numpy
 pandas
+geopandas
+folium
+seaborn
+contextily
