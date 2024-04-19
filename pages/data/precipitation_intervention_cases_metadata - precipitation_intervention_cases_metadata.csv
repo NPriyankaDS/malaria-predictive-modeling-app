@@ -1,0 +1,26 @@
+Column,Data Type,Column Description,Source File
+date,datetime64[ns],Rainfall date,lbr-rainfall-adm2-full.csv
+district_PCODE,object,Liberia district pcode,lbr-rainfall-adm2-full.csv
+rfh,float64,10 day rainfall,lbr-rainfall-adm2-full.csv
+rfh_avg,float64,rainfall long term average,lbr-rainfall-adm2-full.csv
+r1h,float64,rainfall 1-month rolling aggregation,lbr-rainfall-adm2-full.csv
+r1h_avg,float64,rainfall 1-month rolling aggregation long term average ,lbr-rainfall-adm2-full.csv
+r3h,float64,rainfall 3-month rolling aggregation ,lbr-rainfall-adm2-full.csv
+r3h_avg,float64,rainfall 3-month rolling aggregation long term average,lbr-rainfall-adm2-full.csv
+rfq,float64,rainfall anomaly,lbr-rainfall-adm2-full.csv
+r1q,float64,rainfall 1-month anomaly,lbr-rainfall-adm2-full.csv
+r3q,float64,rainfall 3-month anomaly,lbr-rainfall-adm2-full.csv
+version,object,Prelim/final version of data,lbr-rainfall-adm2-full.csv
+Year,int32,Year from date,lbr-rainfall-adm2-full.csv
+Month,int32,Month from date,lbr-rainfall-adm2-full.csv
+District,object,Liberia district,https://data.humdata.org/dataset/bbb2f45c-3d7a-4ad3-afc5-459303dbc8f4/resource/5a6264f2-eff9-48c5-b02e-7ddedec56d3c/download/lbr_adminboundaries_tabulardata.xlsx
+County,object,Liberia county,https://data.humdata.org/dataset/bbb2f45c-3d7a-4ad3-afc5-459303dbc8f4/resource/5a6264f2-eff9-48c5-b02e-7ddedec56d3c/download/lbr_adminboundaries_tabulardata.xlsx
+county_PCODE,object,Liberia county pcode,https://data.humdata.org/dataset/bbb2f45c-3d7a-4ad3-afc5-459303dbc8f4/resource/5a6264f2-eff9-48c5-b02e-7ddedec56d3c/download/lbr_adminboundaries_tabulardata.xlsx
+district_area_SQKM,float64,Liberia district area in square kilometre,https://data.humdata.org/dataset/bbb2f45c-3d7a-4ad3-afc5-459303dbc8f4/resource/5a6264f2-eff9-48c5-b02e-7ddedec56d3c/download/lbr_adminboundaries_tabulardata.xlsx
+IRS_coverage_per_100_household,float64,Indoor residual spraying coverage proportion per 100 households in the county,Liberia_subnational_IRS.csv
+itn_access_per_100_people,float64,Insecticide-treated net access proportion per 100 people in the county,Liberia_subnational_ITN.csv
+itn_use_per_100_people,float64,Insecticide-treated net use proportion per 100 people in the county,Liberia_subnational_ITN.csv
+itn_userate_in_people_with_access,float64,Insecticide-treated net use rate amongst those who have access to an ITN and sleeps under an ITN in the county,Liberia_subnational_ITN.csv
+effective_treatment_per_100_cases,float64,Effective treatment per 100 cases in the county,Liberia_subnational_treatment.csv
+Cases_Value,float64,Estimated malaria cases in the county in defined year,pivot_data_Liberia_malariapercounty.csv
+Deaths_Value,float64,Estimated malaria deaths in the county in defined year,pivot_data_Liberia_malariapercounty.csv
