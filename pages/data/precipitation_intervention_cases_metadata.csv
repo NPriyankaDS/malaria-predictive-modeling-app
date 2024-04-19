@@ -3,13 +3,22 @@ date,datetime64[ns],Rainfall date,lbr-rainfall-adm2-full.csv
 district_PCODE,object,Liberia district pcode,lbr-rainfall-adm2-full.csv
 rfh,float64,10 day rainfall,lbr-rainfall-adm2-full.csv
 rfh_avg,float64,rainfall long term average,lbr-rainfall-adm2-full.csv
+rfh_min,float64,Minimum 10 day rainfall,lbr-rainfall-adm2-full.csv
+rfh_max,float64,Maximum 10 day rainfall,lbr-rainfall-adm2-full.csv
+rfh_mean,float64,Mean 10 day rainfall,lbr-rainfall-adm2-full.csv
 r1h,float64,rainfall 1-month rolling aggregation,lbr-rainfall-adm2-full.csv
 r1h_avg,float64,rainfall 1-month rolling aggregation long term average ,lbr-rainfall-adm2-full.csv
+r1h_min,float64,Minimum rainfall 1-month rolling aggregation,lbr-rainfall-adm2-full.csv
+r1h_max,float64,Maximum rainfall 1-month rolling aggregation,lbr-rainfall-adm2-full.csv
+r1h_mean,float64,Mean rainfall 1-month rolling aggregation,lbr-rainfall-adm2-full.csv
 r3h,float64,rainfall 3-month rolling aggregation ,lbr-rainfall-adm2-full.csv
 r3h_avg,float64,rainfall 3-month rolling aggregation long term average,lbr-rainfall-adm2-full.csv
 rfq,float64,rainfall anomaly,lbr-rainfall-adm2-full.csv
 r1q,float64,rainfall 1-month anomaly,lbr-rainfall-adm2-full.csv
 r3q,float64,rainfall 3-month anomaly,lbr-rainfall-adm2-full.csv
+rfq_min,float64,Minimum rainfall anomaly,lbr-rainfall-adm2-full.csv
+rfq_max,float64,Maximum rainfall anomaly,lbr-rainfall-adm2-full.csv
+rfq_mean,float64,Mean rainfall anomaly,lbr-rainfall-adm2-full.csv
 version,object,Prelim/final version of data,lbr-rainfall-adm2-full.csv
 Year,int32,Year from date,lbr-rainfall-adm2-full.csv
 Month,int32,Month from date,lbr-rainfall-adm2-full.csv
