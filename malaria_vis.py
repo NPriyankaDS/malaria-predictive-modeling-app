@@ -31,7 +31,7 @@ def read_dataset():
     #Loading the data for LBGE81FL and LBGC81FL
     gdf = gpd.read_file("data/LB_2022_MIS_02262024_207_206552/LBGE81FL/LBGE81FL.shp")
     df = pd.read_csv("data/LB_2022_MIS_02262024_207_206552/LBGC81FL/LBGC81FL/LBGC81FL.csv")
-    
+    df_demography = pd.read_csv("data/Population_LB_year.csv")
 
     columns = list(df.columns)
     gdf_combined = pd.concat([gdf,df],axis=1)
@@ -42,12 +42,19 @@ def read_dataset():
     malaria_prevalence_data = gdf_combined[malaria_prevalence_columns]
     itn_columns = ['DHSREGNA', 'ITN_Coverage_2000','ITN_Coverage_2005','ITN_Coverage_2010','ITN_Coverage_2015','ITN_Coverage_2020']
     itn_data = gdf_combined[itn_columns]
+    pop_density_columns = ['DHSREGNA', 'UN_Population_Density_2000','UN_Population_Density_2005','UN_Population_Density_2010','UN_Population_Density_2015','UN_Population_Density_2020']
+    pop_density_data = gdf_combined[pop_density_columns]
     wet_days_columns = ['DHSREGNA', 'Wet_Days_2000','Wet_Days_2005','Wet_Days_2010','Wet_Days_2015','Wet_Days_2020']
     month_temp_columns = ['DHSREGNA', 'Temperature_January','Temperature_February','Temperature_March','Temperature_April',
                 'Temperature_May','Temperature_June','Temperature_July','Temperature_August','Temperature_September','Temperature_October',
                 'Temperature_November','Temperature_December']
     rainfall_columns = ['DHSREGNA', 'Rainfall_2000','Rainfall_2005','Rainfall_2010','Rainfall_2015','Rainfall_2020']
-    return gdf_combined, malaria_data ,itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data
+    evi_columns = ['DHSREGNA', 'Enhanced_Vegetation_Index_2000','Enhanced_Vegetation_Index_2005','Enhanced_Vegetation_Index_2010','Enhanced_Vegetation_Index_2015','Enhanced_Vegetation_Index_2020']
+    evi_data = gdf_combined[evi_columns]
+    pet_columns = ['DHSREGNA', 'PET_2000','PET_2005','PET_2010','PET_2015','PET_2020']
+    pet_data = gdf_combined[pet_columns]
+
+    return gdf_combined, malaria_data ,itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography
 
 
 def preprocess_health_facilities():
@@ -129,34 +136,177 @@ def preprocess_health_facilities():
 
 
 # Define your visualizations for each category
-def visualization_category_1(data,year,subcategory):
-    if subcategory == "Population": 
+def visualization_category_1(data,subcategory,pop_density_data, df_demography):
+    if subcategory == "UN Population": 
     # Add your visualization for category 1 here
-        st.markdown("")
         
-        if year == '2020':
-            fig1 = px.scatter_mapbox(data, lon='LONGNUM', lat='LATNUM',size='UN_Population_Density_2020',color='URBAN_RURA',title='UN Population Density - 2020',
-                                    labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', 'UN_Population_Density_2020': 'UN Population Density 2020'},
-                                    center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
-                                    zoom=10,
-                                    mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
+        year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
+        st.subheader(f"UN Population density {year}")
+        st.markdown("The average UN-adjusted population density of the area at the DHS survey cluster location(Number of people per square kilometer).")
+        df1 = pop_density_data.groupby('DHSREGNA').mean()
+        m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
+        # Add circle markers for each location with varying radius based on ITN coverage intensity
+        # Define color gradient based on ITN coverage intensity
+        color_gradient = {
+            'Low (<30%)': 'green',
+            'Medium (30-79%)': 'yellow',
+            'High (>=80%)': 'red'
+        }
+        max_pop_density = data[f'UN_Population_Density_{year}'].max()
+        for index, row in data.iterrows():
+            # Determine color based on ITN coverage intensity
+            pop_density = row[f'UN_Population_Density_{year}']
             
-            # Display the Folium map and Plotly figure in Streamlit
-            st.plotly_chart(fig1)
-        elif year == '2015':
-            fig1 = px.scatter_mapbox(data, lon='LONGNUM', lat='LATNUM',size='UN_Population_Density_2015',color='URBAN_RURA',title='UN Population Density - 2015',
-                                    labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', 'UN_Population_Density_2015': 'UN Population Density 2015'},
-                                    center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
-                                    zoom=10,
-                                    mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
-            
-            # Display the Folium map and Plotly figure in Streamlit
-            st.plotly_chart(fig1)
-        else:
-            pass
-        
+            if pop_density < 0.3 * max_pop_density:
+                color = color_gradient['Low (<30%)']
+            elif pop_density < 0.8 * max_pop_density:
+                color = color_gradient['Medium (30-79%)']
+            else:
+                color = color_gradient['High (>=80%)']
 
-    
+            # Create a circle marker with popup displaying ITN coverage value
+            folium.CircleMarker(
+                location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
+                radius=8,
+                popup=f"DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>UN Population Density: {pop_density:.2f}",  # Format as percentage
+                color=color,
+                fill=True,
+                fill_color=color
+            ).add_to(m)
+
+        # Display the map
+        folium_static(m)
+
+        st.dataframe(df1)
+        # Define function to plot line chart with interactive dropdown
+        def plot_interactive_line_chart(data):
+            selected_features = st.multiselect('Select feature:', data.columns, default=['UN_Population_Density_2020'])
+            if selected_features:
+                numeric_data = data[selected_features].select_dtypes(include='number')
+                if not numeric_data.empty:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    numeric_data.plot.line(ax=ax, marker='o')
+                    ax.set_xlabel('Region')
+                    ax.set_ylabel('UN Population density')
+                    ax.set_title('UN Population density')
+                    st.pyplot(fig)
+                else:
+                    st.warning('No numeric data selected. Please choose numeric features.')
+            else:
+                st.warning('Please select one or more features.')
+
+        # Display the interactive plot
+        plot_interactive_line_chart(df1)
+
+        fig1 = px.scatter_mapbox(data, lon='LONGNUM', lat='LATNUM',size=f'UN_Population_Density_{year}',color='URBAN_RURA',title=f'UN Population Density - {year}',
+                                labels={'DHSREGNA':'Region', 'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', f'UN_Population_Density_{year}': f'UN Population Density {year}'},
+                                center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
+                                zoom=8,
+                                mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
+        
+        # Display the Folium map and Plotly figure in Streamlit
+        st.plotly_chart(fig1)
+
+    elif subcategory == "Population":
+        # Create a multiselect widget for variable selection
+        selected_variables = st.multiselect('Select variables', ['Total_population', 'no_of_females', 'no_of_males'], default=['Total_population'])
+        # Define custom colors for the bars
+        custom_colors = ['#1f77b4', '#ff7f0e', '#2ca02c'] 
+        # Create the bar chart using Plotly based on the selected variables
+        fig = px.bar(df_demography, x='Year', y=selected_variables, 
+                    title='Demographic Data', 
+                    labels={'Year': 'Year', 'value': 'Population', 'variable': 'Variable'}, 
+                    color_discrete_sequence=custom_colors)  # Optional: Set a custom color
+
+        # Customize layout (optional)
+        fig.update_layout(xaxis=dict(title='Year'), yaxis=dict(title='Population'), xaxis_tickangle=-45)
+
+        # Display the plot in Streamlit
+        st.plotly_chart(fig)
+        # Define the range of years
+        year_range = list(range(2000, 2023))
+        year = st.sidebar.selectbox('Select year',year_range)
+        df = df_demography[df_demography['Year'] == year]
+
+        select_plot = st.selectbox("Select the plot",['Distribution by Gender','Distribution by Region','Age-pyramid'])
+        # Get the percentage of females and males for the year selected
+        if select_plot == 'Distribution by Gender':
+            percentage_females = df['Percentage_of_females'].iloc[0]
+            percentage_males = df['Percentage_of_males'].iloc[0]
+
+            # Create a DataFrame for the pie chart
+            df1 = {'Gender': ['Females', 'Males'], 'Percentage': [percentage_females, percentage_males]}
+            df_pie = pd.DataFrame(df1)
+
+            # Plot the pie chart using Plotly
+            fig = px.pie(df_pie, values='Percentage', names='Gender', title=f'Percentage of Females and Males in {year}',
+                        color_discrete_sequence=['lightpink', 'lightblue'])
+
+            # Display the pie chart in the Streamlit app
+            st.plotly_chart(fig)
+
+        elif select_plot == 'Distribution by Region':
+            percentage_rural = df['Percentage_of_Rural_population'].iloc[0]
+            percentage_urban = df['Percentage_of_urban_population'].iloc[0]
+
+            # Create a DataFrame for the pie chart
+            df2 = {'Region': ['Rural', 'Urban'], 'Percentage': [percentage_rural, percentage_urban]}
+            df_pie = pd.DataFrame(df2)
+
+            # Plot the pie chart using Plotly
+            fig = px.pie(df_pie, values='Percentage', names='Region', title=f'Percentage of Rural and Urban population in {year}',
+                        color_discrete_sequence=['lightgreen', 'lightblue'])
+
+            # Display the pie chart in the Streamlit app
+            st.plotly_chart(fig)
+        
+        else:
+
+            columns_for_females = df[['Population ages 00-04, female', 'Population ages 05-09, female','Population ages 10-14, female','Population ages 15-19, female',
+                       'Population ages 20-24, female','Population ages 25-29, female', 'Population ages 30-34, female',
+                       'Population ages 35-39, female','Population ages 40-44, female','Population ages 45-49, female','Population ages 50-54, female','Population ages 55-59, female',
+                       'Population ages 60-64, female','Population ages 65-69, female','Population ages 70-74, female','Population ages 75-79, female','Population ages 80 and above, female']].iloc[0]
+            columns_for_males = df[['Population ages 00-04, male', 'Population ages 05-09, male','Population ages 10-14, male','Population ages 15-19, male',
+                       'Population ages 20-24, male','Population ages 25-29, male', 'Population ages 30-34, male',
+                       'Population ages 35-39, male','Population ages 40-44, male','Population ages 45-49, male','Population ages 50-54, male','Population ages 55-59, male',
+                       'Population ages 60-64, male','Population ages 65-69, male','Population ages 70-74, male','Population ages 75-79, male','Population ages 80 and above, male']].iloc[0]
+            age_data = {
+                    'Age Group': ['0-04','05-09', '10-14', '15-19','20-24', '25-29', '30-34', '35-39', '40-44', '45-49',
+                                '50-54', '55-59', '60-64', '65-69', '70-74', '75-79', 'Above 80'],
+                    'Male': columns_for_males.to_list(),
+                    'Female': columns_for_females.to_list()
+                }
+            df_age = pd.DataFrame(age_data)
+            # Plot pyramid plot
+            fig, ax = plt.subplots(figsize=(12,6))
+
+            # Plot males
+            ax.barh(df_age['Age Group'], df_age['Male'], color='blue', label='Male')
+
+            # Plot females with negative values to mirror the bars
+            ax.barh(df_age['Age Group'], df_age['Female'], color='red', label='Female')
+
+            # Set labels and title
+            ax.set_xlabel('Population')
+            ax.set_ylabel('Age Group')
+            ax.set_title(f'Population Pyramid {year}')
+
+            # Invert y-axis to display youngest age group at the top
+            ax.invert_yaxis()
+
+            # Add legend
+            ax.legend()
+
+            # Show plot
+            st.pyplot(fig)
+
+            y1 = ['Population ages 0-14, total','Population ages 15-64, total', 'Population ages 65 and above, total']
+            fig = px.line(df_demography, x='Year', y=y1, title="Population Distribution Over Time")
+            st.plotly_chart(fig)
+
+
+    else:
+        pass
 
 def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data):
     # Add your visualization for category 2 here
@@ -485,9 +635,136 @@ def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall
 
 
 
-def visualization_category_4(data):
-    st.header("Environment")
+def visualization_category_4(data, subcategory, evi_data, pet_data):
+    year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
     # Add your visualization for category 3 here
+    if subcategory == "Enhanced vegetation index":
+        st.subheader(f"{subcategory}")
+        
+        st.markdown("The average vegetation index value at the DHS survey cluster at the time of measurement (year).\
+            Vegetation index value between -1 (least vegetation) and 1 (most vegetation).")
+        df1 = evi_data.groupby('DHSREGNA').mean()
+        
+        st.markdown(f"The below map shows the EVI for the year {year}. Here the red circles correspond to EVI (>0.5), yellow for EVI in the range (0.3-0.5) and green for EVI (>0.2)")
+        m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
+        # Add circle markers for each location with varying radius based on ITN coverage intensity
+        # Define color gradient based on ITN coverage intensity
+        color_gradient = {
+            'Low': 'green',
+            'Medium': 'yellow',
+            'High': 'red'
+        }
+        for index, row in data.iterrows():
+            # Determine color based on ITN coverage intensity
+            evi = row[f'Enhanced_Vegetation_Index_{year}']  #Convert to percentage
+            if evi < 0.2:
+                color = color_gradient['Low']
+            elif evi < 0.5:
+                color = color_gradient['Medium']
+            else:
+                color = color_gradient['High']
+
+            # Create a circle marker with popup displaying ITN coverage value
+            folium.CircleMarker(
+                location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
+                radius=8,
+                popup=f"DHS Cluster ID:{row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Enhanced vegetation index: {evi:.4f}",  
+                color=color,
+                fill=True,
+                fill_color=color
+            ).add_to(m)
+
+        # Display the map
+        folium_static(m)
+
+        st.dataframe(df1)
+        # Define function to plot line chart with interactive dropdown
+        def plot_interactive_line_chart(data):
+            selected_features = st.multiselect('Select feature:', data.columns, default=['Enhanced_Vegetation_Index_2020'])
+            if selected_features:
+                numeric_data = data[selected_features].select_dtypes(include='number')
+                if not numeric_data.empty:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    numeric_data.plot.line(ax=ax, marker='o')
+                    ax.set_xlabel('Regions')
+                    ax.set_ylabel('Enhanced vegetation index')
+                    ax.set_title('Enhanced vegetation index(EVI)')
+                    st.pyplot(fig)
+                else:
+                    st.warning('No numeric data selected. Please choose numeric features.')
+            else:
+                st.warning('Please select one or more features.')
+
+        # Display the interactive plot
+        plot_interactive_line_chart(df1)
+        fig1 = px.scatter_mapbox(data, lon='LONGNUM', lat='LATNUM',size=f'Enhanced_Vegetation_Index_{year}',color='URBAN_RURA',title=f'EVI in Urban and Rural areas - {year}',
+                                labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', f'Enhanced_Vegetation_Index_{year}': 'Enhanced vegetation index'},
+                                center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
+                                zoom=10,
+                                mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
+        
+        st.plotly_chart(fig1)
+    
+    elif subcategory == "Potential Evapotranspiration":
+        st.subheader(f"{subcategory}")
+        st.markdown("The average potential evapotranspiration (PET) at the DHS survey cluster location. This dataset was produced by taking the average of the twelve monthly datasets, which represent millimeters\
+                    per day, for a given year.")
+        st.markdown("PET: The number shows the number millimeters of water that would be evaporated into the air over the course of a year if there was\
+                    unlimited water at the location.")
+        df2 = pet_data.groupby("DHSREGNA").mean()
+        m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
+        # Add circle markers for each location with varying radius based on ITN coverage intensity
+        # Define color gradient based on ITN coverage intensity
+        color_gradient = {
+            'Low': 'green',
+            'Medium': 'yellow',
+            'High': 'red'
+        }
+        for index, row in data.iterrows():
+            # Determine color based on ITN coverage intensity
+            evi = row[f'PET_{year}']  #Convert to percentage
+            if evi < 3.1:
+                color = color_gradient['Low']
+            elif evi < 3.4:
+                color = color_gradient['Medium']
+            else:
+                color = color_gradient['High']
+
+            # Create a circle marker with popup displaying ITN coverage value
+            folium.CircleMarker(
+                location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
+                radius=8,
+                popup=f"DHS Cluster ID:{row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Urban/Rural:{row['URBAN_RURA']}<br>Enhanced vegetation index: {evi:.4f}",  
+                color=color,
+                fill=True,
+                fill_color=color
+            ).add_to(m)
+
+        # Display the map
+        folium_static(m)
+
+        st.dataframe(df2)
+        # Define function to plot line chart with interactive dropdown
+        def plot_interactive_line_chart(data):
+            selected_features = st.multiselect('Select feature:', data.columns, default=['PET_2020'])
+            if selected_features:
+                numeric_data = data[selected_features].select_dtypes(include='number')
+                if not numeric_data.empty:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    numeric_data.plot.line(ax=ax, marker='o')
+                    ax.set_xlabel('Regions')
+                    ax.set_ylabel('PET(in mm)')
+                    ax.set_title('Average Potential Evapotranspiration(PET)')
+                    # Add annotations to data points
+                    for column in numeric_data.columns:
+                        for i, value in enumerate(numeric_data[column]):
+                            ax.annotate(f'{value:.4f}', (i, value), textcoords="offset points", xytext=(0,12), ha='center')
+                    st.pyplot(fig)
+                else:
+                    st.warning('No numeric data selected. Please choose numeric features.')
+            else:
+                st.warning('Please select one or more features.')
+        plot_interactive_line_chart(df2)
 
 
 def visualization_category_5(data):
@@ -508,13 +785,14 @@ def visualization_category_5(data):
 def main():
     st.title("Liberia Statistics")
 
-    data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data = read_dataset()
+    data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography = read_dataset()
 
     # Define main categories and their corresponding subcategories
     categories = {
-        'Demography': ['Population'],
+        'Demography': ['UN Population','Under-5 Population','Population'],
         'Health': ['Health facilities', 'ITN Coverage', 'Malaria Incidence','Malaria Prevalence'],
-        'Agriculture': ['Schools', 'Universities', 'Libraries'],
+        'Environment': ['Enhanced vegetation index','Potential Evapotranspiration'],
+        'Climate':['Rainfall','Temperature'],
         # Add more main categories and subcategories as needed
     }
 
@@ -532,14 +810,14 @@ def main():
     #counties = st.sidebar.selectbox("Select the county", options = ['Boma','Grand Bassa'])
     # Display the selected visualization based on the chosen category
     if main_category == "Demography":
-        visualization_category_1(data,year,subcategory)
+        visualization_category_1(data,subcategory,pop_density_data, df_demography)
     elif main_category == "Health":
         visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data)
-    elif category == "Climate":
+    elif main_category == "Climate":
         visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns)
-    elif category == "Environment":
-        visualization_category_4(data)
-    elif category == "Agriculture":
+    elif main_category == "Environment":
+        visualization_category_4(data,subcategory,evi_data, pet_data)
+    elif main_category == "Agriculture":
         visualization_category_5(data)
 
     
