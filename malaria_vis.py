@@ -15,10 +15,11 @@ import altair as alt
 from streamlit_folium import folium_static
 from folium.plugins import HeatMap
 
+@st.cache_data
 def read_health_facilities():
     #Loading the data
-    points_path = "data/hotosm_lbr_health_facilities_points_geojson.geojson"
-    polygons_path = "data/hotosm_lbr_health_facilities_polygons_geojson.geojson"
+    points_path = "./data/hotosm_lbr_health_facilities_points_geojson.geojson"
+    polygons_path = "./data/hotosm_lbr_health_facilities_polygons_geojson.geojson"
     points_gdf = gpd.read_file(points_path)
     polygons_gdf = gpd.read_file(polygons_path)
     # Merge the two datasets into a single GeoDataFrame
@@ -27,12 +28,15 @@ def read_health_facilities():
     combined_gdf['point_geometry'] = combined_gdf.apply(lambda row: row['geometry'].representative_point() if row['geometry'].geom_type == 'Polygon' else row['geometry'],axis=1)
     return combined_gdf
 
+@st.cache_data
 def read_dataset():
     #Loading the data for LBGE81FL and LBGC81FL
-    gdf = gpd.read_file("data/LB_2022_MIS_02262024_207_206552/LBGE81FL/LBGE81FL.shp")
-    df = pd.read_csv("data/LB_2022_MIS_02262024_207_206552/LBGC81FL/LBGC81FL/LBGC81FL.csv")
-    df_demography = pd.read_csv("data/Population_LB_year.csv")
-
+    gdf = gpd.read_file("./data/LB_2022_MIS_02262024_207_206552/LBGE81FL/LBGE81FL.shp")
+    df = pd.read_csv("./data/LB_2022_MIS_02262024_207_206552/LBGC81FL/LBGC81FL/LBGC81FL.csv")
+    df_demography = pd.read_csv("./data/Population_LB_year.csv")
+    df_agri = pd.read_csv("data/STATcompilerExport2024221_16431.csv")
+    df_children_malaria = pd.read_csv("./data/Prevalence_of_malaria_in_children.csv")
+    df_children_malaria.fillna(value='null',inplace=True)
     columns = list(df.columns)
     gdf_combined = pd.concat([gdf,df],axis=1)
     
@@ -54,7 +58,7 @@ def read_dataset():
     pet_columns = ['DHSREGNA', 'PET_2000','PET_2005','PET_2010','PET_2015','PET_2020']
     pet_data = gdf_combined[pet_columns]
 
-    return gdf_combined, malaria_data ,itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography
+    return gdf_combined, malaria_data ,itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria
 
 
 def preprocess_health_facilities():
@@ -181,7 +185,8 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
         # Define function to plot line chart with interactive dropdown
         def plot_interactive_line_chart(data):
             selected_features = st.multiselect('Select feature:', data.columns, default=['UN_Population_Density_2020'])
-            if selected_features:
+            button = st.button("Submit")
+            if button:
                 numeric_data = data[selected_features].select_dtypes(include='number')
                 if not numeric_data.empty:
                     fig, ax = plt.subplots(figsize=(10, 6))
@@ -206,6 +211,68 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
         
         # Display the Folium map and Plotly figure in Streamlit
         st.plotly_chart(fig1)
+
+    elif subcategory == "Under-5 Population":
+        under5_pop_columns = ['DHSREGNA', 'U5_Population_2000','U5_Population_2005','U5_Population_2010','U5_Population_2015','U5_Population_2020']
+        under5_pop_data = data[under5_pop_columns]
+        year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
+        st.subheader(f"Under-5 Population {year}")
+        st.markdown("The number of people under the age of 5 (U5) at the time of measurement (year) living in the 5 x 5 km pixel in which the DHS survey cluster is located. (Number of people).")
+        df2 = under5_pop_data.groupby('DHSREGNA').mean()
+        m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
+        # Add circle markers for each location with varying radius based on ITN coverage intensity
+        # Define color gradient based on ITN coverage intensity
+        color_gradient = {
+            'Low (<30%)': 'green',
+            'Medium (30-79%)': 'yellow',
+            'High (>=80%)': 'red'
+        }
+        max_pop_density = data[f'U5_Population_{year}'].max()
+        for index, row in data.iterrows():
+            # Determine color based on ITN coverage intensity
+            under5_pop = row[f'U5_Population_{year}']
+            
+            if under5_pop < 0.3 * max_pop_density:
+                color = color_gradient['Low (<30%)']
+            elif under5_pop < 0.8 * max_pop_density:
+                color = color_gradient['Medium (30-79%)']
+            else:
+                color = color_gradient['High (>=80%)']
+
+            # Create a circle marker with popup displaying ITN coverage value
+            folium.CircleMarker(
+                location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
+                radius=8,
+                popup=f"Region:{row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Under-5 Population: {under5_pop:.3f}",  
+                color=color,
+                fill=True,
+                fill_color=color
+            ).add_to(m)
+
+        # Display the map
+        folium_static(m)
+
+        st.dataframe(df2)
+        # Define function to plot line chart with interactive dropdown
+        def plot_interactive_line_chart(data):
+            selected_features = st.multiselect('Select feature:', data.columns, default=['U5_Population_2000'])
+            button = st.button("Submit")
+            if button:
+                numeric_data = data[selected_features].select_dtypes(include='number')
+                if not numeric_data.empty:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    numeric_data.plot.line(ax=ax, marker='o')
+                    ax.set_xlabel('Region')
+                    ax.set_ylabel('Under-5 Population')
+                    ax.set_title('Under-5 Population')
+                    st.pyplot(fig)
+                else:
+                    st.warning('No numeric data selected. Please choose numeric features.')
+            else:
+                st.warning('Please select one or more features.')
+
+        # Display the interactive plot
+        plot_interactive_line_chart(df2)
 
     elif subcategory == "Population":
         # Create a multiselect widget for variable selection
@@ -308,7 +375,7 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
     else:
         pass
 
-def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data):
+def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data, df_children_malaria):
     # Add your visualization for category 2 here
     # Create a Folium map with a basemap
     if subcategory == "All":
@@ -322,7 +389,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
     elif subcategory =="Malaria Incidence":
         df1 = malaria_data.groupby('DHSREGNA').mean()
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
-        st.subheader("Malaria Incidence based on MIS Survey 2022")
+        st.subheader(f"Malaria Incidence for the year {year}")
         st.markdown(f"The below map shows the Malaria incidence for the year {year}. Here the red circles correspond to Malaria incidence (>50%), yellow for malaria incidence in the range (20-49%) and green for malaria incidence (<20%)")
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
         # Add circle markers for each location with varying radius based on ITN coverage intensity
@@ -359,7 +426,8 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         # Define function to plot line chart with interactive dropdown
         def plot_interactive_line_chart(data):
             selected_features = st.multiselect('Select feature:', data.columns, default=['Malaria_Incidence_2020'])
-            if selected_features:
+            button = st.button("Submit")
+            if button:
                 numeric_data = data[selected_features].select_dtypes(include='number')
                 if not numeric_data.empty:
                     fig, ax = plt.subplots(figsize=(10, 6))
@@ -390,7 +458,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
     elif subcategory == "Malaria Prevalence":
         df2 = malaria_prevalence_data.groupby('DHSREGNA').mean()
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
-        st.subheader("Malaria Prevalence based on MIS Survey 2022")
+        st.subheader(f"Malaria Prevalence for the year {year}")
         st.markdown(f"The below map shows the Malaria prevalence for the year {year}. Here the red circles correspond to Malaria incidence (>50%), yellow for malaria incidence in the range (20-49%) and green for malaria incidence (<20%)")
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
         # Add circle markers for each location with varying radius based on ITN coverage intensity
@@ -414,7 +482,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
             folium.CircleMarker(
                 location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
                 radius=8,
-                popup=f"DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Malaria Prevalence: {malaria_prevalence:.2f}%",  # Format as percentage
+                popup=f"Urban/Rural: {row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Malaria Prevalence: {malaria_prevalence:.2f}%",  # Format as percentage
                 color=color,
                 fill=True,
                 fill_color=color
@@ -427,7 +495,8 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         # Define function to plot line chart with interactive dropdown
         def plot_interactive_line_chart(data):
             selected_features = st.multiselect('Select feature:', data.columns, default=['Malaria_Prevalence_2020'])
-            if selected_features:
+            button = st.button("Submit")
+            if button:
                 numeric_data = data[selected_features].select_dtypes(include='number')
                 if not numeric_data.empty:
                     fig, ax = plt.subplots(figsize=(10, 6))
@@ -443,17 +512,91 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         # Display the interactive plot
         plot_interactive_line_chart(df2)
-        fig2 = px.scatter_mapbox(data, lon='LONGNUM', lat='LATNUM',size=f'Malaria_Prevalence_{year}',color='URBAN_RURA',title=f'Malaria Prevalence in Urban and Rural areas - {year}',
-                                labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', f'Malaria_Prevalence_{year}': 'Malaria Prevalence'},
-                                center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
-                                zoom=10,
-                                mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
-        
-        st.plotly_chart(fig2)
 
+    elif subcategory == "Malaria prevalence in childer(6-59) months":
+        # Define a function to extract numeric values from the strings
+        def extract_numeric_value(text):
+            match = re.search(r'(\d+\.\d+)',text)
+            if match:
+                return float(match.group(0))
+            else:
+                return None
+
+        df_children_malaria['Malaria prevalence according to RDT'] = df_children_malaria['Malaria prevalence according to RDT'].apply(extract_numeric_value)
+        df_children_malaria['Malaria prevalence according to microscopy'] = df_children_malaria['Malaria prevalence according to microscopy'].apply(extract_numeric_value)
+        df_2022_MIS = df_children_malaria.loc[np.where(df_children_malaria['Survey']=='2022 MIS')]
+        st.subheader("Malaria prevalence in children(6-59) months based on 2022 Malaria Indicator Survey(MIS)")
+        
+        with st.expander("About"):
+            st.write("Malaria prevalence according to RDT : " "Percentage of children age 6-59 months tested using a rapid diagnostic test (RDT) who are positive for malaria. The confidence intervals (CIs) presented may differ from CIs in DHS and MIS final reports as the CIs in STATcompiler were calculated using the Jackknife Estimation Method rather the Taylor Series Linearization Method used in DHS and MIS final reports.\n\n"
+                        "Number of children 6-59 months tested using RDT: ","Number of children age 6-59 months tested for malaria using a rapid diagnostic test (RDT)\n\n",
+                        "Malaria prevalence according to microscopy : " "Number of children age 6-59 months tested for malaria using a rapid diagnostic test (RDT) (unweighted)\n\n" 
+                        "Number of children 6-59 months tested using microscopy: ","Percentage of children age 6-59 months tested using microscopy who are positive for malaria. The confidence intervals (CIs) presented may differ from CIs in DHS and MIS final reports as the CIs in STATcompiler were calculated using the Jackknife Estimation Method rather the Taylor Series Linearization Method used in DHS and MIS final reports. \n\n"
+                        "Source: ICF, 2015. The DHS Program STATcompiler. Funded by USAID. http://www.statcompiler.com. February 22 2024")
+        
+        st.markdown("Choose the category in the sidebar. There are six categories: Group of Counties, Age group, Gender, Education level, Wealth quintiles and Residence type. The graph and the data changes here as per the chosen category.")
+        select_cat = st.sidebar.selectbox("Choose the category", ['Group of Counties', 'Age group', 'Gender', 'Education level', 'Wealth quintiles','Residence type'])
+        if select_cat == "Age group":
+            df_subset = df_2022_MIS[19:26]  # Ensure to make a copy to avoid modifying the original DataFrame
+        elif select_cat == "Education level":
+            df_subset = df_2022_MIS[5:9]
+        elif select_cat == "Gender":
+            df_subset = df_2022_MIS[1:3]
+        elif select_cat == "Residence type":
+            df_subset = df_2022_MIS[3:5]
+        elif select_cat == "Group of Counties":
+            df_subset = df_2022_MIS[26:32]
+        else:
+            df_subset = df_2022_MIS[11:16]  
+
+        # Create a horizontal bar plot using Plotly Express
+        fig = px.bar(df_subset, y='Characteristic', x=['Malaria prevalence according to RDT', 'Malaria prevalence according to microscopy'], orientation='h',
+                    title=f"Malaria prevalence in children by {select_cat}",
+                    labels={'value': 'Percentage', 'Characteristic': f'{select_cat}'})
+
+        # Customize the legend position
+        fig.update_layout(legend=dict(x=1.02, y=1.0))
+
+        # Display the Plotly chart in Streamlit
+        st.plotly_chart(fig)
+        st.write(df_subset.iloc[:,0:5].reset_index(drop=True))
+
+        with st.expander("Analysis"):
+            st.write("""***Malaria prevalence in children (6-59 months)***
+
+                * Malaria prevalence according to RDT:
+
+                1) Age groups(in months) : 48-59 > 36-47 > 24-35 > 18-23 > 12-17 > 9-11 > 6-8
+
+                2) Education level: Primary > No education > Secondary > Higher
+
+                3) Gender : Male > Female
+
+                4) Residence: Rural > Urban
+
+                5) Region: South eastern B > South Eastern A > North Central > North Western > South Central > Monrovia
+
+                6) Weath quintile: Lowest > Second >Middle > Fourth > Highest
+                
+                * Malaria prevalence according to microscopy:
+
+                1) Age groups(in months) : 48-59 > 36-47 > 24-35 > 18-23 > 9-11 > 12-17 > 6-8
+
+                2) Education level : Primary > No education > Secondary > Higher
+
+                3) Gender: Male > Female
+
+                4) Residence: Rural > Urban
+
+                5) Region: South Eastern B > North Central > South eastern A > North Western > South Central > Monrovia
+
+                6) Wealth quintile : Lowest > Second > Middle > Fourth > Highest
+
+                """)
+            
     elif subcategory == "ITN Coverage": 
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
-        st.subheader("ITN Coverage based on MIS Survey 2022")
+        st.subheader(f"ITN Coverage for the year {year}")
         st.markdown(f"The below map shows the ITN distribution for the year {year}. Here the red circles correspond to ITN Coverage (>50%), yellow for medium coverage(20-49%) and green for low coverage (<20%)")
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
         # Add circle markers for each location with varying radius based on ITN coverage intensity
@@ -491,7 +634,8 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         # Define function to plot line chart with interactive dropdown
         def plot_interactive_line_chart(data):
             selected_features = st.multiselect('Select feature:', data.columns, default=['ITN_Coverage_2020'])
-            if selected_features:
+            button = st.button("Submit")
+            if button:
                 numeric_data = data[selected_features].select_dtypes(include='number')
                 if not numeric_data.empty:
                     fig, ax = plt.subplots(figsize=(10, 6))
@@ -509,8 +653,8 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         plot_interactive_line_chart(df2)
 
     elif subcategory == "Health facilities":
-        with st.expander("Health facilities"):
-            df3 = preprocess_health_facilities()
+        
+        df3 = preprocess_health_facilities()
             
         st.subheader("Spatial distribution of all amenities")
         # Extract longitude and latitude from the Point geometry
@@ -544,7 +688,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         # Create a filter for city
         selected_city = st.selectbox('Select a city', ['All'] + list(cities))
-
+    
         if selected_city != 'All':
             # Filter the GeoDataFrame based on selected city
             filtered_df = df3[df3['addr:city'] == selected_city]
@@ -767,32 +911,88 @@ def visualization_category_4(data, subcategory, evi_data, pet_data):
         plot_interactive_line_chart(df2)
 
 
-def visualization_category_5(data):
-    st.header("Agriculture")
-    st.subheader("Drought Episodes")
-    st.markdown("The average number of drought episodes (categorized between 1 (low) and 10 (high)) at the DHS survey cluster location.")
+def visualization_category_5(data, subcategory, df_agri):
+        
+    # st.subheader("Drought Episodes")
+    # st.markdown("The average number of drought episodes (categorized between 1 (low) and 10 (high)) at the DHS survey cluster location.")
 
-    fig3 = px.scatter_mapbox(data['Drought_Episodes'], lon='LONGNUM', lat='LATNUM',color='URBAN_RURA',title='Drought episodes',
-                            labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', 'Drought_Episodes': 'Drought episodes'},
-                            center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
-                            zoom=10,
-                            mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
+    # fig3 = px.scatter_mapbox(data['Drought_Episodes'], lon='LONGNUM', lat='LATNUM',color='URBAN_RURA',title='Drought episodes',
+    #                         labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', 'Drought_Episodes': 'Drought episodes'},
+    #                         center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
+    #                         zoom=10,
+    #                         mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
     
-    st.plotly_chart(fig3)
-    
+    # st.plotly_chart(fig3)
 
+    if subcategory == "Households with farm animals and agricultural land based on 2019-20 DHS Survey":
+        df_agri = df_agri.loc[np.where(df_agri['Survey'] == "2019-20 DHS")] #Selecting the MIS 2022 Survey data
+        df_agri = df_agri.reset_index(drop=True)
+        groups_counties = [val for val in df_agri['Characteristic'].values if val.startswith('Groups of Counties')]
+        counties = [val for val in df_agri['Characteristic'].values if val.startswith('Counties')]
+        st.subheader("2019-20 DHS Survey data")
+        st.markdown("Choose the category in the sidebar. There are four categories: 'Group of Counties','Counties','Wealth quintiles' and 'Residence type'. The graph and the data changes here as per the chosen category.")
+        select_cat = st.sidebar.selectbox("Choose the category", ['Group of Counties', 'Counties','Wealth quintiles','Residence type'])
+        if select_cat == "Residence type":
+            df_subset = df_agri[1:3].copy()  # Ensure to make a copy to avoid modifying the original DataFrame
+        elif select_cat == "Wealth quintiles":
+            df_subset = df_agri[3:8].copy()
+        elif select_cat == "Group of Counties":
+            mask = df_agri.isin(groups_counties).any(axis=1)
+            groups_of_counties = df_agri[mask]
+            df_subset = groups_of_counties
+        else:
+            mask2 = df_agri.isin(counties).any(axis=1)
+            counties_df = df_agri[mask2]
+            df_subset = counties_df
+            
+        # Create a horizontal bar plot using Plotly Express
+        fig = px.bar(df_subset, y='Characteristic', x=['Households owning agricultural land', 'Households owning farm animals'], orientation='h',
+                    title=f"Households owning agriculture lands and farm animals by {select_cat}",
+                    labels={'value': 'Percentage', 'Characteristic': f'{select_cat}'})
+
+        # Customize the legend position
+        fig.update_layout(legend=dict(x=1.02, y=1.0))
+
+        # Display the Plotly chart in Streamlit
+        st.plotly_chart(fig)
+        st.write(df_subset.reset_index(drop=True))
+
+
+    if subcategory == "Households with farm animals and agricultural land based on 2022 MIS":
+        df_agri = df_agri.loc[np.where(df_agri['Survey'] == "2022 MIS")] #Selecting the MIS 2022 Survey data
+        st.subheader("2022 MIS Survey data")
+        st.markdown("Choose the category in the sidebar. There are three categories: 'Group of Counties','Wealth quintiles' and 'Residence type'. The graph and the data changes here as per the chosen category.")
+        select_cat = st.sidebar.selectbox("Choose the category", ['Group of Counties','Wealth quintiles','Residence type'])
+        if select_cat == "Group of Counties":
+            df_subset = df_agri[8:13].copy()  # Ensure to make a copy to avoid modifying the original DataFrame
+        elif select_cat == "Wealth quintiles":
+            df_subset = df_agri[3:8].copy()
+        else:
+            df_subset = df_agri[1:3].copy()
+        # Create a horizontal bar plot using Plotly Express
+        fig = px.bar(df_subset, y='Characteristic', x=['Households owning agricultural land', 'Households owning farm animals'], orientation='h',
+                    title=f"Households owning agriculture lands and farm animals by {select_cat}",
+                    labels={'value': 'Percentage', 'Characteristic': f'{select_cat}'})
+
+        # Customize the legend position
+        fig.update_layout(legend=dict(x=1.02, y=1.0))
+
+        # Display the Plotly chart in Streamlit
+        st.plotly_chart(fig)
+        st.write(df_subset.reset_index(drop=True))
 
 def main():
     st.title("Liberia Statistics")
 
-    data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography = read_dataset()
+    data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria = read_dataset()
 
     # Define main categories and their corresponding subcategories
     categories = {
         'Demography': ['UN Population','Under-5 Population','Population'],
-        'Health': ['Health facilities', 'ITN Coverage', 'Malaria Incidence','Malaria Prevalence'],
+        'Health': ['Health facilities', 'ITN Coverage', 'Malaria Incidence','Malaria Prevalence','Malaria prevalence in childer(6-59) months'],
         'Environment': ['Enhanced vegetation index','Potential Evapotranspiration'],
         'Climate':['Rainfall','Temperature'],
+        'Agriculture':['Households with farm animals and agricultural land based on 2022 MIS','Households with farm animals and agricultural land based on 2019-20 DHS Survey']
         # Add more main categories and subcategories as needed
     }
 
@@ -812,13 +1012,15 @@ def main():
     if main_category == "Demography":
         visualization_category_1(data,subcategory,pop_density_data, df_demography)
     elif main_category == "Health":
-        visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data)
+        visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data, df_children_malaria)
     elif main_category == "Climate":
         visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns)
     elif main_category == "Environment":
         visualization_category_4(data,subcategory,evi_data, pet_data)
     elif main_category == "Agriculture":
-        visualization_category_5(data)
+        visualization_category_5(data, subcategory, df_agri)
+    else:
+        pass
 
     
 
