@@ -8,6 +8,7 @@ import contextily as ctx
 import plotly.express as px
 import folium
 from folium.plugins import MarkerCluster
+from branca.colormap import LinearColormap, StepColormap
 import plotly.graph_objects as go
 import re
 from shapely.geometry import Point
@@ -36,7 +37,7 @@ def read_dataset():
     df_demography = pd.read_csv("./data/Population_LB_year.csv")
     df_agri = pd.read_csv("data/STATcompilerExport2024221_16431.csv")
     df_children_malaria = pd.read_csv("./data/Prevalence_of_malaria_in_children.csv")
-    df_children_malaria.fillna(value='null',inplace=True)
+    df_children_malaria = df_children_malaria.astype(object).fillna(value='null')
     columns = list(df.columns)
     gdf_combined = pd.concat([gdf,df],axis=1)
     
@@ -57,8 +58,10 @@ def read_dataset():
     evi_data = gdf_combined[evi_columns]
     pet_columns = ['DHSREGNA', 'PET_2000','PET_2005','PET_2010','PET_2015','PET_2020']
     pet_data = gdf_combined[pet_columns]
+    aridity_columns = ['DHSREGNA', 'Aridity_2000', 'Aridity_2005', 'Aridity_2010', 'Aridity_2015','Aridity_2020']
+    aridity_data = gdf_combined[aridity_columns]
 
-    return gdf_combined, malaria_data ,itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria
+    return gdf_combined, malaria_data ,itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria, aridity_data
 
 
 def preprocess_health_facilities():
@@ -146,38 +149,27 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
         
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
         st.subheader(f"UN Population density {year}")
-        st.markdown("The average UN-adjusted population density of the area at the DHS survey cluster location(Number of people per square kilometer).")
+        st.info("The average UN-adjusted population density of the area at the DHS survey cluster location(Number of people per square kilometer).")
+        st.markdown("Select the year in the sidebar. The map changes in accordance with the year chosen.")
         df1 = pop_density_data.groupby('DHSREGNA').mean()
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
-        # Add circle markers for each location with varying radius based on ITN coverage intensity
-        # Define color gradient based on ITN coverage intensity
-        color_gradient = {
-            'Low (<30%)': 'green',
-            'Medium (30-79%)': 'yellow',
-            'High (>=80%)': 'red'
-        }
-        max_pop_density = data[f'UN_Population_Density_{year}'].max()
+        cmap = LinearColormap(['green', 'yellow', 'orange', 'red'], vmin=data[f'UN_Population_Density_{year}'].min(), vmax=data[f'UN_Population_Density_{year}'].max())
+
         for index, row in data.iterrows():
             # Determine color based on ITN coverage intensity
             pop_density = row[f'UN_Population_Density_{year}']
-            
-            if pop_density < 0.3 * max_pop_density:
-                color = color_gradient['Low (<30%)']
-            elif pop_density < 0.8 * max_pop_density:
-                color = color_gradient['Medium (30-79%)']
-            else:
-                color = color_gradient['High (>=80%)']
 
-            # Create a circle marker with popup displaying ITN coverage value
+            # Create a circle marker with popup
             folium.CircleMarker(
                 location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
                 radius=8,
-                popup=f"DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>UN Population Density: {pop_density:.2f}",  # Format as percentage
-                color=color,
+                popup=f"Urban/Rural:{row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>UN Population Density: {pop_density:.2f}",  
+                color=cmap(pop_density),
                 fill=True,
-                fill_color=color
+                fill_color=cmap(pop_density),
             ).add_to(m)
-
+        
+        cmap.add_to(m)
         # Display the map
         folium_static(m)
 
@@ -202,53 +194,33 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
 
         # Display the interactive plot
         plot_interactive_line_chart(df1)
-
-        fig1 = px.scatter_mapbox(data, lon='LONGNUM', lat='LATNUM',size=f'UN_Population_Density_{year}',color='URBAN_RURA',title=f'UN Population Density - {year}',
-                                labels={'DHSREGNA':'Region', 'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', f'UN_Population_Density_{year}': f'UN Population Density {year}'},
-                                center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
-                                zoom=8,
-                                mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
-        
-        # Display the Folium map and Plotly figure in Streamlit
-        st.plotly_chart(fig1)
+        st.markdown("Source: https://dhsprogram.com/")
 
     elif subcategory == "Under-5 Population":
         under5_pop_columns = ['DHSREGNA', 'U5_Population_2000','U5_Population_2005','U5_Population_2010','U5_Population_2015','U5_Population_2020']
         under5_pop_data = data[under5_pop_columns]
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
         st.subheader(f"Under-5 Population {year}")
-        st.markdown("The number of people under the age of 5 (U5) at the time of measurement (year) living in the 5 x 5 km pixel in which the DHS survey cluster is located. (Number of people).")
+        st.info("The number of people under the age of 5 (U5) at the time of measurement (year) living in the 5 x 5 km pixel in which the DHS survey cluster is located. (Number of people).")
+        st.markdown("Select the year in the sidebar. The map changes in accordance with the year chosen.")
         df2 = under5_pop_data.groupby('DHSREGNA').mean()
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
-        # Add circle markers for each location with varying radius based on ITN coverage intensity
-        # Define color gradient based on ITN coverage intensity
-        color_gradient = {
-            'Low (<30%)': 'green',
-            'Medium (30-79%)': 'yellow',
-            'High (>=80%)': 'red'
-        }
-        max_pop_density = data[f'U5_Population_{year}'].max()
+        cmap = LinearColormap(['green', 'yellow', 'orange', 'red'], vmin=data[f'U5_Population_{year}'].min(), vmax=data[f'U5_Population_{year}'].max())
+
         for index, row in data.iterrows():
             # Determine color based on ITN coverage intensity
             under5_pop = row[f'U5_Population_{year}']
-            
-            if under5_pop < 0.3 * max_pop_density:
-                color = color_gradient['Low (<30%)']
-            elif under5_pop < 0.8 * max_pop_density:
-                color = color_gradient['Medium (30-79%)']
-            else:
-                color = color_gradient['High (>=80%)']
-
-            # Create a circle marker with popup displaying ITN coverage value
+                        # Create a circle marker with popup displaying ITN coverage value
             folium.CircleMarker(
                 location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
                 radius=8,
                 popup=f"Region:{row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Under-5 Population: {under5_pop:.3f}",  
-                color=color,
+                color=cmap(under5_pop),
                 fill=True,
-                fill_color=color
+                fill_color=cmap(under5_pop),
             ).add_to(m)
 
+        cmap.add_to(m)
         # Display the map
         folium_static(m)
 
@@ -273,10 +245,12 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
 
         # Display the interactive plot
         plot_interactive_line_chart(df2)
+        st.markdown("Source: https://dhsprogram.com/")
 
     elif subcategory == "Population":
         # Create a multiselect widget for variable selection
         selected_variables = st.multiselect('Select variables', ['Total_population', 'no_of_females', 'no_of_males'], default=['Total_population'])
+        st.markdown("There are three variables: Total population, Number of females and Number of males")
         # Define custom colors for the bars
         custom_colors = ['#1f77b4', '#ff7f0e', '#2ca02c'] 
         # Create the bar chart using Plotly based on the selected variables
@@ -296,6 +270,10 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
         df = df_demography[df_demography['Year'] == year]
 
         select_plot = st.selectbox("Select the plot",['Distribution by Gender','Distribution by Region','Age-pyramid'])
+        st.markdown("""There are three plots: Distribution by Gender, Distribution by Region, and Age-pyramid.
+        In the sidebar, there is a selectbox for selecting the years. The year ranges from 2000 to 2022.
+        The data displayed below changes in accordance with the year chosen. """)
+        
         # Get the percentage of females and males for the year selected
         if select_plot == 'Distribution by Gender':
             percentage_females = df['Percentage_of_females'].iloc[0]
@@ -370,15 +348,25 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
             y1 = ['Population ages 0-14, total','Population ages 15-64, total', 'Population ages 65 and above, total']
             fig = px.line(df_demography, x='Year', y=y1, title="Population Distribution Over Time")
             st.plotly_chart(fig)
+        st.markdown("Source: https://datacatalog.worldbank.org/public-licenses#cc-by")
 
 
     else:
-        pass
+        st.markdown("**About**")
+        st.write("--------------------------------------------")
+        st.write("""There are three subcategories for Demography: 
+        UN Population , Under-5 Population and Population. \n\n
+        UN Population:\nUnder this category, we can see the UN Population density of Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Under-5 Population:\nUnder this category, we can see the Under -5 Population of Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020. The data for both the categories has been obtained from DHS Program.\n
+        Population:\nUnder this category, the population statistics for Liberia has been displayed.
+        The statistics include the Total population, Number of Females, Number of Males, Percentage distribution by Gender, by Region, and Age-pyramid.
+        """)
+        st.write("--------------------------------------------")
 
-def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data, df_children_malaria):
+def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data, df_children_malaria, df_demography):
     # Add your visualization for category 2 here
     # Create a Folium map with a basemap
-    if subcategory == "All":
+    if subcategory == "About":
         with st.expander("About",expanded=False):
             st.markdown("Malaria Incidence : Number of clinical cases of Plasmodium falciparum malaria per person.")
             st.markdown("Malaria Prevalence : Parasite rate of plasmodium falciparum (PfPR) in children between the ages of 2 and 10 years old.")
@@ -390,35 +378,27 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         df1 = malaria_data.groupby('DHSREGNA').mean()
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
         st.subheader(f"Malaria Incidence for the year {year}")
-        st.markdown(f"The below map shows the Malaria incidence for the year {year}. Here the red circles correspond to Malaria incidence (>50%), yellow for malaria incidence in the range (20-49%) and green for malaria incidence (<20%)")
+        
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
-        # Add circle markers for each location with varying radius based on ITN coverage intensity
-        # Define color gradient based on ITN coverage intensity
-        color_gradient = {
-            'Low (<20%)': 'green',
-            'Medium (20-49%)': 'yellow',
-            'High (>=50%)': 'red'
-        }
+  
+        # Define color map
+        cmap = LinearColormap(['green', 'yellow', 'orange', 'red'], vmin=data[f'Malaria_Incidence_{year}'].min(), vmax=data[f'Malaria_Incidence_{year}'].max())
+
         for index, row in data.iterrows():
             # Determine color based on ITN coverage intensity
-            malaria_incidence = row[f'Malaria_Incidence_{year}'] * 100  #Convert to percentage
-            if malaria_incidence < 20:
-                color = color_gradient['Low (<20%)']
-            elif malaria_incidence < 50:
-                color = color_gradient['Medium (20-49%)']
-            else:
-                color = color_gradient['High (>=50%)']
+            malaria_incidence = row[f'Malaria_Incidence_{year}'] #Convert to percentage
 
             # Create a circle marker with popup displaying ITN coverage value
             folium.CircleMarker(
                 location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
                 radius=8,
-                popup=f"DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Malaria Incidence: {malaria_incidence:.2f}%",  # Format as percentage
-                color=color,
+                popup=f"Urban/Rural: {row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Malaria Incidence: {malaria_incidence:.4f}",  # Format as percentage
+                color=cmap(malaria_incidence),
                 fill=True,
-                fill_color=color
+                fill_color=cmap(malaria_incidence)
             ).add_to(m)
 
+        cmap.add_to(m)
         # Display the map
         folium_static(m)
 
@@ -443,51 +423,33 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         # Display the interactive plot
         plot_interactive_line_chart(df1)
-
-        fig1 = px.scatter_mapbox(data, lon='LONGNUM', lat='LATNUM',size=f'Malaria_Incidence_{year}',color='URBAN_RURA',title= f'Malaria Incidence in Urban and Rural areas - {year}',
-                        labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', f'Malaria_Incidence_{year}': 'Malaria Incidence'},
-                        center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
-                        zoom=5,
-                        mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'pink'})
+        st.markdown("Source: https://dhsprogram.com/")
         
-        # Display the Folium map and Plotly figure in Streamlit
-        st.plotly_chart(fig1)
-        
-        
-    
     elif subcategory == "Malaria Prevalence":
         df2 = malaria_prevalence_data.groupby('DHSREGNA').mean()
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
         st.subheader(f"Malaria Prevalence for the year {year}")
-        st.markdown(f"The below map shows the Malaria prevalence for the year {year}. Here the red circles correspond to Malaria incidence (>50%), yellow for malaria incidence in the range (20-49%) and green for malaria incidence (<20%)")
+        
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
         # Add circle markers for each location with varying radius based on ITN coverage intensity
         # Define color gradient based on ITN coverage intensity
-        color_gradient = {
-            'Low (<20%)': 'green',
-            'Medium (20-49%)': 'yellow',
-            'High (>=50%)': 'red'
-        }
+        
+        cmap = LinearColormap(['green', 'yellow', 'orange', 'red'], vmin=data[f'Malaria_Prevalence_{year}'].min(), vmax=data[f'Malaria_Prevalence_{year}'].max())
         for index, row in data.iterrows():
             # Determine color based on ITN coverage intensity
-            malaria_prevalence = row[f'Malaria_Prevalence_{year}'] * 100  #Convert to percentage
-            if malaria_prevalence < 20:
-                color = color_gradient['Low (<20%)']
-            elif malaria_prevalence < 50:
-                color = color_gradient['Medium (20-49%)']
-            else:
-                color = color_gradient['High (>=50%)']
-
+            malaria_prevalence = row[f'Malaria_Prevalence_{year}'] #Convert to percentage
+            
             # Create a circle marker with popup displaying ITN coverage value
             folium.CircleMarker(
                 location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
                 radius=8,
-                popup=f"Urban/Rural: {row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Malaria Prevalence: {malaria_prevalence:.2f}%",  # Format as percentage
-                color=color,
+                popup=f"Urban/Rural: {row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Malaria Prevalence: {malaria_prevalence:.3f}",
+                color=cmap(malaria_prevalence),
                 fill=True,
-                fill_color=color
+                fill_color=cmap(malaria_prevalence)
             ).add_to(m)
-
+        
+        cmap.add_to(m)
         # Display the map
         folium_static(m)
 
@@ -512,8 +474,9 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         # Display the interactive plot
         plot_interactive_line_chart(df2)
+        st.markdown("Source: https://dhsprogram.com/")
 
-    elif subcategory == "Malaria prevalence in childer(6-59) months":
+    elif subcategory == "Malaria prevalence in children(6-59) months":
         # Define a function to extract numeric values from the strings
         def extract_numeric_value(text):
             match = re.search(r'(\d+\.\d+)',text)
@@ -593,6 +556,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
                 6) Wealth quintile : Lowest > Second > Middle > Fourth > Highest
 
                 """)
+            st.markdown("Source: The DHS Program STATcompiler. Funded by USAID. http://www.statcompiler.com. February 22 2024")
             
     elif subcategory == "ITN Coverage": 
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
@@ -651,6 +615,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         # Display the interactive plot
         plot_interactive_line_chart(df2)
+        st.markdown("Source: https://dhsprogram.com/")
 
     elif subcategory == "Health facilities":
         
@@ -759,65 +724,238 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         #save to an HTML file to open in a browser
         folium_static(m1)
 
+    elif subcategory == "Malaria cases by Species":
+        df = {
+            'Year': [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022],
+            'Indigenous': [922173, 1921159, 1412629, 1244220, 881224, 941711, 1191137, 1093115, None, 915845, None, 912436, 696684],
+            'P.falciparum': [212927, 577641, 1407455, 1244220, 864204, None, 809356, None, None, 915845, None, 912436, 696684],
+        }
+        df = pd.DataFrame(df)
+        df['Indigenous'] = df['Indigenous'].fillna(df['Indigenous'].mean())
+        df['P.falciparum'] = df['P.falciparum'].fillna(df['P.falciparum'].mean())
+        
+        # Create the line plot using Plotly Express
+        fig = px.line(df, x='Year', y=['Indigenous','P.falciparum'],
+                    title='Reported malaria cases by species',
+                    labels={'Year': 'Year','value':'Number of cases','variable':'Species'},
+                    color_discrete_map={'Indigenous': 'red', 'P.falciparum': 'blue'})
 
+        # Show the plot
+        st.plotly_chart(fig)
+        
+        st.markdown("Note: The missing values have been imputed with the mean values of the respective cases by species.")
+        df_demography = df_demography.copy()[0:13]
+        df_demography['malaria_deaths'] = df_demography['malaria_deaths'].fillna(df_demography['malaria_deaths'].mean())
+        fig = px.line(df_demography, x='Year', y='malaria_deaths', title='Malaria Deaths Over Time')
 
-def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns):
-    st.header("Climate")
-    # Add your visualization for category 3 here
-    with st.expander("Mean Wet Days"):
-        st.markdown("Wet Days(Mean): The average number of days per month receiving ≥0.1 mm precipitation at the DHS survey cluster location.")
-        df1 = data.groupby('DHSREGNA')[wet_days_columns].mean()
-        st.dataframe(df1)
-    with st.expander("Average Monthly temperature"):
-        st.markdown("Average monthly temperature: Average temperature for months January to December in degrees Celsius.")
-        df2 = data.groupby('DHSREGNA')[month_temp_columns].mean()
+        # Display the plot using streamlit's plotly_chart
+        st.plotly_chart(fig)
+        df_demo = df_demography[['Year','malaria_deaths']][0:13]
+        df_merged =pd.merge(df,df_demo,on='Year',how='inner')
+        st.dataframe(df_merged)
+        st.markdown("Note: The missing values for the malaria deaths have been imputed with the mean value.")
+
+def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns,subcategory):
+    
+    year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
+
+    if subcategory == "Mean wet days":
+    
+        st.subheader(f"Mean wet days for the year {year}")
+        st.write("Definition: \nThe average number of days per month receiving ≥0.1 mm precipitation at the DHS survey cluster location.")
+        
+        m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
+        # Add circle markers for each location with varying radius based on ITN coverage intensity
+        # Define colormap
+        cmap = LinearColormap(['green', 'yellow', 'orange', 'red'], vmin=data[f'Wet_Days_{year}'].min(), vmax=data[f'Wet_Days_{year}'].max())
+
+        for index, row in data.iterrows():
+            # Determine color based on Mean number of wet days
+            wet_days = row[f'Wet_Days_{year}']  
+            # Create circle marker with color based on wet days value
+            folium.CircleMarker(
+                location=[row['LATNUM'], row['LONGNUM']],
+                radius=8,
+                popup=f"DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Mean wet days: {wet_days:.4f}",
+                color=cmap(wet_days),
+                fill=True,
+                fill_color=cmap(wet_days)
+            ).add_to(m)
+
+        # Add colormap legend to map
+        cmap.add_to(m)
+
+        # Display the map
+        folium_static(m)
+
+        wet_days_data = data[wet_days_columns]
+        df2 = wet_days_data.groupby('DHSREGNA').mean()
         st.dataframe(df2)
-    with st.expander("Average annual rainfall"):
-        st.markdown("The average annual rainfall at the DHS survey cluster location.")
-        df3 = data.groupby('DHSREGNA')[rainfall_columns].mean()
-        st.dataframe(df3)
+        # Define function to plot line chart with interactive dropdown
+        def plot_interactive_line_chart(data):
+            selected_features = st.multiselect('Select feature:', data.columns, default=['Wet_Days_2020'])
+            button = st.button("Submit")
+            if button:
+                numeric_data = data[selected_features].select_dtypes(include='number')
+                if not numeric_data.empty:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    numeric_data.plot.line(ax=ax, marker='o')
+                    ax.set_xlabel('DHSREGNA')
+                    ax.set_ylabel('Mean wet days')
+                    ax.set_title('Mean wet days')
+                    st.pyplot(fig)
+                else:
+                    st.warning('No numeric data selected. Please choose numeric features.')
+            else:
+                st.warning('Please select one or more features.')
+
+        # Display the interactive plot
+        plot_interactive_line_chart(df2)
+
+    elif subcategory == "Rainfall":
+        st.subheader(f"Average annual rainfall for the year {year}")
+        st.write("Definition: \nThe average annual rainfall at the DHS survey cluster location.")
+        
+        m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
+        #marker_cluster = MarkerCluster().add_to(m)
+        min_rainfall = data[f'Rainfall_{year}'].min()
+        max_rainfall = data[f'Rainfall_{year}'].max()
+
+        # Define colormap thresholds (sorted)
+        thresholds = [min_rainfall, min_rainfall + (max_rainfall - min_rainfall) / 3, min_rainfall + 2 * (max_rainfall - min_rainfall) / 3, max_rainfall]
+        # Define colormap
+        cmap = StepColormap(['green', 'yellow', 'orange', 'red'], vmin=min_rainfall, vmax=max_rainfall, index=thresholds)
+        
+        for index, row in data.iterrows():
+            # Determine color based on Mean number of wet days
+            rainfall = row[f'Rainfall_{year}']  
+            # Create circle marker with color based on wet days value
+            folium.CircleMarker(
+                location=[row['LATNUM'], row['LONGNUM']],
+                radius=8,
+                popup=f"Urban/Rural:{row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Average annual rainfall: {rainfall:.4f}",
+                color=cmap(rainfall),
+                fill=True,
+                fill_color=cmap(rainfall)
+            ).add_to(m)
+
+        # Add colormap legend to map
+        m.add_child(cmap)
+
+        # Display the map
+        folium_static(m)
+
+        rainfall_data = data[rainfall_columns]
+        df2 = rainfall_data.groupby('DHSREGNA').mean()
+        st.dataframe(df2)
+        # Define function to plot line chart with interactive dropdown
+        def plot_interactive_line_chart(data):
+            selected_features = st.multiselect('Select feature:', data.columns, default=['Rainfall_2020'])
+            button = st.button("Submit")
+            if button:
+                numeric_data = data[selected_features].select_dtypes(include='number')
+                if not numeric_data.empty:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    numeric_data.plot.line(ax=ax, marker='o')
+                    ax.set_xlabel('DHSREGNA')
+                    ax.set_ylabel('Average annual rainfall')
+                    ax.set_title('Average annual rainfall')
+                    st.pyplot(fig)
+                else:
+                    st.warning('No numeric data selected. Please choose numeric features.')
+            else:
+                st.warning('Please select one or more features.')
+
+        # Display the interactive plot
+        plot_interactive_line_chart(df2)
+    
+    elif subcategory == "Temperature":
+        st.subheader(f"Average temperature for the year {year}")
+        st.write("Definition: \nThe average temperature at the DHS survey cluster location for a given year.")
+        
+        m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
+        #marker_cluster = MarkerCluster().add_to(m)
+        min_temp = data[f'Mean_Temperature_{year}'].min()
+        max_temp = data[f'Mean_Temperature_{year}'].max()
+
+        # Define colormap thresholds (sorted)
+        thresholds = [min_temp, min_temp + (max_temp - min_temp) / 3, min_temp + 2 * (max_temp - min_temp) / 3, max_temp]
+        # Define colormap
+        cmap = StepColormap(['green', 'yellow', 'orange', 'red'], vmin=min_temp, vmax=max_temp, index=thresholds)
+        
+        for index, row in data.iterrows():
+            # Determine color based on Mean number of wet days
+            temp = row[f'Mean_Temperature_{year}']  
+            # Create circle marker with color based on wet days value
+            folium.CircleMarker(
+                location=[row['LATNUM'], row['LONGNUM']],
+                radius=8,
+                popup=f"Urban/Rural:{row['URBAN_RURA']}<br>DHS Cluster ID: {row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Mean Temperature: {temp:.4f}",
+                color=cmap(temp),
+                fill=True,
+                fill_color=cmap(temp)
+            ).add_to(m)
+
+        # Add colormap legend to map
+        m.add_child(cmap)
+
+        # Display the map
+        folium_static(m)
+
+        temp_columns = ['DHSREGNA', 'Mean_Temperature_2000','Mean_Temperature_2005','Mean_Temperature_2010','Mean_Temperature_2015','Mean_Temperature_2020']
+        temp_data = data[temp_columns]
+        df2 = temp_data.groupby('DHSREGNA').mean()
+        st.dataframe(df2)
+        # Define function to plot line chart with interactive dropdown
+        def plot_interactive_line_chart(data):
+            selected_features = st.multiselect('Select feature:', data.columns, default=['Mean_Temperature_2020'])
+            button = st.button("Submit")
+            if button:
+                numeric_data = data[selected_features].select_dtypes(include='number')
+                if not numeric_data.empty:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    numeric_data.plot.line(ax=ax, marker='o')
+                    ax.set_xlabel('DHSREGNA')
+                    ax.set_ylabel('Mean Temperature')
+                    ax.set_title('Mean Temperature')
+                    st.pyplot(fig)
+                else:
+                    st.warning('No numeric data selected. Please choose numeric features.')
+            else:
+                st.warning('Please select one or more features.')
+
+        # Display the interactive plot
+        plot_interactive_line_chart(df2)
 
 
-
-def visualization_category_4(data, subcategory, evi_data, pet_data):
+def visualization_category_4(data, subcategory, evi_data, pet_data, aridity_data):
     year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
     # Add your visualization for category 3 here
     if subcategory == "Enhanced vegetation index":
         st.subheader(f"{subcategory}")
         
-        st.markdown("The average vegetation index value at the DHS survey cluster at the time of measurement (year).\
+        st.info("The average vegetation index value at the DHS survey cluster at the time of measurement (year).\
             Vegetation index value between -1 (least vegetation) and 1 (most vegetation).")
+        st.markdown("Select the year in the sidebar. The map changes in accordance with the year chosen.")
         df1 = evi_data.groupby('DHSREGNA').mean()
-        
-        st.markdown(f"The below map shows the EVI for the year {year}. Here the red circles correspond to EVI (>0.5), yellow for EVI in the range (0.3-0.5) and green for EVI (>0.2)")
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
-        # Add circle markers for each location with varying radius based on ITN coverage intensity
-        # Define color gradient based on ITN coverage intensity
-        color_gradient = {
-            'Low': 'green',
-            'Medium': 'yellow',
-            'High': 'red'
-        }
-        for index, row in data.iterrows():
-            # Determine color based on ITN coverage intensity
-            evi = row[f'Enhanced_Vegetation_Index_{year}']  #Convert to percentage
-            if evi < 0.2:
-                color = color_gradient['Low']
-            elif evi < 0.5:
-                color = color_gradient['Medium']
-            else:
-                color = color_gradient['High']
+        cmap = LinearColormap(['green', 'yellow', 'orange', 'red'], vmin=data[f'Enhanced_Vegetation_Index_{year}'].min(), vmax=data[f'Enhanced_Vegetation_Index_{year}'].max())
 
-            # Create a circle marker with popup displaying ITN coverage value
+        for index, row in data.iterrows():
+            
+            evi = row[f'Enhanced_Vegetation_Index_{year}']  
+
+            # Create a circle marker with popup 
             folium.CircleMarker(
                 location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
                 radius=8,
                 popup=f"DHS Cluster ID:{row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Enhanced vegetation index: {evi:.4f}",  
-                color=color,
+                color=cmap(evi),
                 fill=True,
-                fill_color=color
+                fill_color=cmap(evi),
             ).add_to(m)
 
+        cmap.add_to(m)
         # Display the map
         folium_static(m)
 
@@ -841,49 +979,33 @@ def visualization_category_4(data, subcategory, evi_data, pet_data):
 
         # Display the interactive plot
         plot_interactive_line_chart(df1)
-        fig1 = px.scatter_mapbox(data, lon='LONGNUM', lat='LATNUM',size=f'Enhanced_Vegetation_Index_{year}',color='URBAN_RURA',title=f'EVI in Urban and Rural areas - {year}',
-                                labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', f'Enhanced_Vegetation_Index_{year}': 'Enhanced vegetation index'},
-                                center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
-                                zoom=10,
-                                mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
-        
-        st.plotly_chart(fig1)
-    
+
     elif subcategory == "Potential Evapotranspiration":
         st.subheader(f"{subcategory}")
-        st.markdown("The average potential evapotranspiration (PET) at the DHS survey cluster location. This dataset was produced by taking the average of the twelve monthly datasets, which represent millimeters\
+        st.info("The average potential evapotranspiration (PET) at the DHS survey cluster location. This dataset was produced by taking the average of the twelve monthly datasets, which represent millimeters\
                     per day, for a given year.")
-        st.markdown("PET: The number shows the number millimeters of water that would be evaporated into the air over the course of a year if there was\
+        st.info("PET: The number shows the number millimeters of water that would be evaporated into the air over the course of a year if there was\
                     unlimited water at the location.")
+        st.markdown("Select the year in the sidebar. The map changes in accordance with the year chosen.")
         df2 = pet_data.groupby("DHSREGNA").mean()
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
-        # Add circle markers for each location with varying radius based on ITN coverage intensity
-        # Define color gradient based on ITN coverage intensity
-        color_gradient = {
-            'Low': 'green',
-            'Medium': 'yellow',
-            'High': 'red'
-        }
-        for index, row in data.iterrows():
-            # Determine color based on ITN coverage intensity
-            evi = row[f'PET_{year}']  #Convert to percentage
-            if evi < 3.1:
-                color = color_gradient['Low']
-            elif evi < 3.4:
-                color = color_gradient['Medium']
-            else:
-                color = color_gradient['High']
+        cmap = LinearColormap(['green', 'yellow', 'orange', 'red'], vmin=data[f'PET_{year}'].min(), vmax=data[f'PET_{year}'].max())
 
-            # Create a circle marker with popup displaying ITN coverage value
+        for index, row in data.iterrows():
+     
+            pet = row[f'PET_{year}']  
+            # Create a circle marker with popup
+
             folium.CircleMarker(
                 location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
                 radius=8,
-                popup=f"DHS Cluster ID:{row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Urban/Rural:{row['URBAN_RURA']}<br>Enhanced vegetation index: {evi:.4f}",  
-                color=color,
+                popup=f"DHS Cluster ID:{row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Urban/Rural:{row['URBAN_RURA']}<br>PET: {pet:.4f}",  
+                color=cmap(pet),
                 fill=True,
-                fill_color=color
+                fill_color=cmap(pet),
             ).add_to(m)
 
+        cmap.add_to(m)
         # Display the map
         folium_static(m)
 
@@ -910,20 +1032,73 @@ def visualization_category_4(data, subcategory, evi_data, pet_data):
                 st.warning('Please select one or more features.')
         plot_interactive_line_chart(df2)
 
+    elif subcategory == "Aridity Index":
+        st.subheader(f"{subcategory}")
+        st.markdown("""The dataset represents the average monthly precipitation divided by average monthly potential
+            evapotranspiration, an aridity index defined by the United Nations Environmental Programme
+            (UNEP).""")
+        st.info("Aridity Index (AI), which is defined as the ratio of annual precipitation to annual potential\
+            evapotranspiration, is a key parameter in drought characterization. Index between 0 (most arid) and 300 (most wet)")
+        st.markdown("Select the year in the sidebar. The map changes in accordance with the year chosen.")
+        df3 = aridity_data.groupby("DHSREGNA").mean()
+        m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
+        cmap = LinearColormap(['green', 'yellow', 'orange', 'red'], vmin=data[f'Aridity_{year}'].min(), vmax=data[f'Aridity_{year}'].max())
+
+        for index, row in data.iterrows():
+            # Determine color based on ITN coverage intensity
+            aridity = row[f'Aridity_{year}']  #Convert to percentage
+
+            # Create a circle marker with popup displaying ITN coverage value
+            folium.CircleMarker(
+                location=[row['LATNUM'], row['LONGNUM']],  # Latitude and longitude from geometry column
+                radius=8,
+                popup=f"Urban/Rural:{row['URBAN_RURA']}<br>DHS Cluster ID:{row['DHSCLUST']}<br>Region:{row['DHSREGNA']}<br>Urban/Rural:{row['URBAN_RURA']}<br>Aridity: {aridity:.4f}",  
+                color=cmap(aridity),
+                fill=True,
+                fill_color=cmap(aridity),
+            ).add_to(m)
+
+        cmap.add_to(m)
+        # Display the map
+        folium_static(m)
+
+        st.dataframe(df3)
+        # Define function to plot line chart with interactive dropdown
+        def plot_interactive_line_chart(data):
+            selected_features = st.multiselect('Select feature:', data.columns, default=['Aridity_2020'])
+            if selected_features:
+                numeric_data = data[selected_features].select_dtypes(include='number')
+                if not numeric_data.empty:
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    numeric_data.plot.line(ax=ax, marker='o')
+                    ax.set_xlabel('Regions')
+                    ax.set_ylabel('Aridity index')
+                    ax.set_title('Aridity index')
+                    # Add annotations to data points
+                    for column in numeric_data.columns:
+                        for i, value in enumerate(numeric_data[column]):
+                            ax.annotate(f'{value:.4f}', (i, value), textcoords="offset points", xytext=(0,12), ha='center')
+                    st.pyplot(fig)
+                else:
+                    st.warning('No numeric data selected. Please choose numeric features.')
+            else:
+                st.warning('Please select one or more features.')
+        plot_interactive_line_chart(df3)
+    
+    else:
+        st.markdown("About")
+        st.markdown("-----------------------------------------")
+        st.write("The page on Agriculture has been divided into three subcategories: \
+            1)Enhanced vegetation index,\
+            2)Potential Evapotranspiration and \
+            3)Aridity Index.\
+                The map of Liberia is displayed for the years 2000, 2005, 2010, 2015 and 2020.This data has been obtained from The DHS Program.\
+            ")
+        st.markdown("-----------------------------------------")
+
 
 def visualization_category_5(data, subcategory, df_agri):
         
-    # st.subheader("Drought Episodes")
-    # st.markdown("The average number of drought episodes (categorized between 1 (low) and 10 (high)) at the DHS survey cluster location.")
-
-    # fig3 = px.scatter_mapbox(data['Drought_Episodes'], lon='LONGNUM', lat='LATNUM',color='URBAN_RURA',title='Drought episodes',
-    #                         labels={'LATNUM': 'Latitude', 'LONGNUM': 'Longitude', 'Drought_Episodes': 'Drought episodes'},
-    #                         center=dict(lat=data['LATNUM'].mean(), lon=data['LONGNUM'].mean()),
-    #                         zoom=10,
-    #                         mapbox_style="carto-positron",color_discrete_map={'U': 'blue', 'R': 'green'})
-    
-    # st.plotly_chart(fig3)
-
     if subcategory == "Households with farm animals and agricultural land based on 2019-20 DHS Survey":
         df_agri = df_agri.loc[np.where(df_agri['Survey'] == "2019-20 DHS")] #Selecting the MIS 2022 Survey data
         df_agri = df_agri.reset_index(drop=True)
@@ -956,9 +1131,18 @@ def visualization_category_5(data, subcategory, df_agri):
         # Display the Plotly chart in Streamlit
         st.plotly_chart(fig)
         st.write(df_subset.reset_index(drop=True))
+        with st.expander("Findings"):
+            st.write("""
+            1) ***Households owning agricultural land :***
+            * Counties : Nimba > Lofa > Bomi > River Gee > River Cess
+            * Regions: North Central > North Western > South Eastern A > South Eastern B > South Central
 
+            2) ***Households owning farm animals:***
+            * Counties: Grand Kru > River Gee > Nimba > River Cess > Gharpola
+            * Regions: South Eastern A > South Eastern B > North Central > North Western > South Central
+            """)
 
-    if subcategory == "Households with farm animals and agricultural land based on 2022 MIS":
+    elif subcategory == "Households with farm animals and agricultural land based on 2022 MIS":
         df_agri = df_agri.loc[np.where(df_agri['Survey'] == "2022 MIS")] #Selecting the MIS 2022 Survey data
         st.subheader("2022 MIS Survey data")
         st.markdown("Choose the category in the sidebar. There are three categories: 'Group of Counties','Wealth quintiles' and 'Residence type'. The graph and the data changes here as per the chosen category.")
@@ -980,18 +1164,31 @@ def visualization_category_5(data, subcategory, df_agri):
         # Display the Plotly chart in Streamlit
         st.plotly_chart(fig)
         st.write(df_subset.reset_index(drop=True))
+        with st.expander("Findings"):
+            st.write("""
+            1) ***Households with agricultural land holdings:***
+            * Region: South eastern A >South eastern B > North Western > South Central > Monrovia
+            * Residence: Rural > Urban
+            * Wealth : Second > Lowest > Middle > Fourth > Highest
+
+
+            2) ***Households owning farm animals:***
+            * Region: South eastern A> South eastern B >North Western > South Central > Monrovia
+            * Wealth quintiles : Second >Lowest > middle >Fourth > Highest
+            * Residence : Rural > Urban
+            """)
 
 def main():
     st.title("Liberia Statistics")
 
-    data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria = read_dataset()
+    data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria, aridity_data = read_dataset()
 
     # Define main categories and their corresponding subcategories
     categories = {
         'Demography': ['UN Population','Under-5 Population','Population'],
-        'Health': ['Health facilities', 'ITN Coverage', 'Malaria Incidence','Malaria Prevalence','Malaria prevalence in childer(6-59) months'],
-        'Environment': ['Enhanced vegetation index','Potential Evapotranspiration'],
-        'Climate':['Rainfall','Temperature'],
+        'Health': ['Health facilities', 'ITN Coverage', 'Malaria Incidence','Malaria Prevalence','Malaria prevalence in children(6-59) months', 'Malaria cases by Species'],
+        'Environment': ['Enhanced vegetation index','Potential Evapotranspiration','Aridity Index'],
+        'Climate':['Mean wet days','Rainfall','Temperature'],
         'Agriculture':['Households with farm animals and agricultural land based on 2022 MIS','Households with farm animals and agricultural land based on 2019-20 DHS Survey']
         # Add more main categories and subcategories as needed
     }
@@ -1002,21 +1199,16 @@ def main():
     # Create a select box for subcategories based on the selected main category
     if main_category:
         subcategories = categories[main_category]
-        subcategory = st.sidebar.selectbox('Select a subcategory', ['All'] + subcategories)
-    # Create a sidebar for selecting categories
-    #category = st.sidebar.selectbox("Select Category", options = ["Demography", "Health", "Climate","Environment","Agriculture"])
-    #year = st.sidebar.selectbox("Select the year", options= ['2000', '2010', '2015', '2020'])
-    #region = st.sidebar.selectbox("Select the region",options = ['Greater Monrovia','South Eastern','South Western'])
-    #counties = st.sidebar.selectbox("Select the county", options = ['Boma','Grand Bassa'])
-    # Display the selected visualization based on the chosen category
+        subcategory = st.sidebar.selectbox('Select a subcategory', ['About'] + subcategories)
+
     if main_category == "Demography":
         visualization_category_1(data,subcategory,pop_density_data, df_demography)
     elif main_category == "Health":
-        visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data, df_children_malaria)
+        visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data, df_children_malaria, df_demography)
     elif main_category == "Climate":
-        visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns)
+        visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns,subcategory)
     elif main_category == "Environment":
-        visualization_category_4(data,subcategory,evi_data, pet_data)
+        visualization_category_4(data,subcategory,evi_data, pet_data, aridity_data)
     elif main_category == "Agriculture":
         visualization_category_5(data, subcategory, df_agri)
     else:
