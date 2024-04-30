@@ -73,8 +73,14 @@ def read_dataset():
     diurnal_temp_data = gdf_combined[diurnal_temp_columns]
     precipation_columns = ['DHSREGNA', 'Precipitation_2000','Precipitation_2005','Precipitation_2010','Precipitation_2015','Precipitation_2020']
     precipitation_data = gdf_combined[precipation_columns]
+    night_land_temp_columns = ['DHSREGNA', 'Night_Land_Surface_Temp_2000','Night_Land_Surface_Temp_2005','Night_Land_Surface_Temp_2010','Night_Land_Surface_Temp_2015','Night_Land_Surface_Temp_2020']
+    night_land_temp_data = gdf_combined[night_land_temp_columns]
+    surface_temp_columns = ['DHSREGNA', 'Land_Surface_Temperature_2000','Land_Surface_Temperature_2005','Land_Surface_Temperature_2010','Land_Surface_Temperature_2015','Land_Surface_Temperature_2020']
+    surface_temp_data = gdf_combined[surface_temp_columns]
+    day_land_temp_columns = ['DHSREGNA', 'Day_Land_Surface_Temp_2000','Day_Land_Surface_Temp_2005','Day_Land_Surface_Temp_2010','Day_Land_Surface_Temp_2015','Day_Land_Surface_Temp_2020']
+    day_land_temp_data = gdf_combined[day_land_temp_columns]
 
-    return gdf_combined, malaria_data ,itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria, aridity_data, df_malaria, diurnal_temp_data, precipitation_data
+    return gdf_combined, malaria_data ,itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria, aridity_data, df_malaria, diurnal_temp_data, precipitation_data, night_land_temp_data, surface_temp_data, day_land_temp_data
 
 
 def preprocess_health_facilities():
@@ -329,7 +335,7 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
 
 
     else:
-        st.markdown("**About**")
+        st.subheader("**About**")
         st.write("--------------------------------------------")
         st.write("""There are three subcategories for Demography: 
         UN Population , Under-5 Population and Population. \n\n
@@ -338,22 +344,80 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
         Population:\nUnder this category, the population statistics for Liberia has been displayed.
         The statistics include the Total population, Number of Females, Number of Males, Percentage distribution by Gender, by Region, and Age-pyramid.
         """)
-        st.write("--------------------------------------------")
+        st.write("**Choose the indicators in the selectbox below and see the relation between it and the Malaria Incidence and Malaria Prevalence for the year 2020**")
+        chosen_category = st.selectbox("Select the indicator", ["UN Population Density","Under-5 Population"])
+        if chosen_category == "UN Population Density":
+            x = "UN_Population_Density_2020"
+            st.write("The graph appears to be a curvilinear relationship. Malaria incidence seems to be higher at low population densities. This could be due to factors like:\
+            1)More stagnant water bodies for mosquito breeding.\
+            2)Less investment in infrastructure and healthcare in sparsely populated areas.\
+            Malaria incidence appears to be lowest around a specific population density.There's a higher chance of people having access to resources like bed nets and healthcare compared to low-density areas.\
+            As population density keeps increasing, malaria incidence seems to rise again. This could be due to:\
+            1)Increased human-mosquito contact creating more opportunities for transmission.\
+            2)Overcrowding and strain on sanitation systems leading to more breeding sites.")
+
+        elif chosen_category == "Under-5 Population":
+            x = "U5_Population_2020"
+            st.write("The graph shows a negative correlation between malaria incidence and the under-5 population. This means that areas with a larger under-five population tend to have lower rates of malaria incidence.\
+                There could be other factors at play that influence both malaria rates and under-five populations. For example, areas with better access to healthcare may have lower rates of malaria and also tend to have larger under-five populations.")
+        
+        combined_data = data[[x, 'Malaria_Incidence_2020', 'Malaria_Prevalence_2020']]
+
+        # Melt the DataFrame to have 'Malaria_Incidence_2020' and 'Malaria_Prevalence_2020' as a single variable
+        combined_data_melted = combined_data.melt(id_vars=[x], var_name='Indicator', value_name='Value')
+
+        # Plot using Plotly Express
+        fig = px.scatter(combined_data_melted, x=x, y='Value', color='Indicator')
+        fig.update_layout(title=f"Relation between Malaria Incidence/Prevalence and {chosen_category}",
+                        xaxis_title=x,
+                        yaxis_title="Value")
+
+        # Show plotly chart in Streamlit
+        st.plotly_chart(fig)
+        st.write("**Important Note**: correlation does not necessarily equal causation. There could be other factors that influence malaria incidence/prevalence that are not shown in this graph.")
+        st.write("For More information on the data, kindly refer to the 'The Geospatial Covariate Datasets Manual from DHS Program' in the User_Guide page.")
+        st.markdown("-------------------------------------------------")
+        
 
 def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data, df_children_malaria, df_demography, df_malaria):
     # Add your visualization for category 2 here
 
     if subcategory == "About":
-        st.write("DHS Malaria Indicators:")
-        st.markdown("---------------------------------------------------")
+        st.write("**About**")
         
-        st.write("Percentage of children with hemoglobin lower than 8.0 g/dl: Percentage of children age 6-59 months who stayed in the household the night before the interview with hemoglobin lower than 8.0 g/dl.")
-        st.write("Household Possession of Mosquito Nets: Percentage of households with at least one mosquito net, percentage of households with at least one insecticide-treated net (ITN), average number of mosquito nets, average number of ITNs, percentage of households with at least one mosquito net for every two persons who stayed in the household last night, and percentage of households with at least one ITN for every two persons who stayed in the household last night")
-        st.write("Use of Mosquito Nets by Persons in the Household: Percentage of the household population who slept the night before the survey under a mosquito net, under an insecticide-treated net (ITN), and among the population in households with at least one ITN, the percentage who slept under an ITN the night before the survey")
-        st.write("Use of Mosquito Nets by Pregnant Women: Percentage of pregnant women who slept the night before the survey under a mosquito net, who slept the night before the survey under an insecticide-treated net (ITN), and among pregnant women age 15-49 in households with at least one ITN, the percentage who slept under an ITN the night before the survey")
-        st.write("Use of Intermittent Preventive Treatment (IPTp) by Women during Pregnancy: Percentage of women who, during pregnancy, received one or more doses of SP/Fansidar, received two or more doses of SP/Fansidar, and received three or more doses of SP/Fansidar")
-        st.write("Prevalence, Diagnosis, and Prompt Treatment of Children with Fever: Percentage of children with fever in the 2 weeks preceding the survey; and among children with fever, percentage for whom advice or treatment was sought, percentage for whom advice or treatment was sought the same or next day following the onset of fever, and percentage who had blood taken from a finger or heel for testing, and percentage who were diagnosed with malaria by a healthcare provider")
-        st.write("For more information: Refer to the link Guide to DHS Statistics under Malaria category.")
+        st.markdown("---------------------------------------------------")
+        st.write("""There are seven subcategories under Health category: 
+        Health facilities, ITN Coverage, Malaria Incidence, Malaria Prevalence Malaria prevalence in children (6-59) months, Malaria cases by species and DHS Malaria Indicators. \n\n
+        Health facilities:\nUnder this category, we can see the spatial distribution of all the amenities of Liberia on the map. There is also a statistics displayed for the city you select. A graph showing the top 10 cities with most healthcare facilities and also least healthcare facilities. Also, a heatmap of those Top 10 cities with least healthcare facilities.\n
+        ITN Coverage:\nUnder this category, we can see the coverage of Insecticide-treated nets(ITNs) in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Malaria Incidence:\nUnder this category, we can see the Malaria Incidence in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020. The average number of clinical cases of Plasmodium falciparum malaria per person per year at the DHS survey cluster location.\n
+        Malaria Prevalence:\nUnder this category, we can see the Malaria prevalence in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020. The average parasite rate of plasmodium falciparum (PfPR) in children between the ages of 2 and 10 years old at the DHS survey cluster location.\n
+        Malaria prevalence in children (6-59) months:\nUnder this category, the statistics for malaria prevalence in children aged 6-59 months based on the Malaria Indicator Survey(MIS) 2022 is displayed.\n
+        Malaria cases by species: \nUnder this category, we have a plot of Malaria cases by species: Indigenous and Plasmodium falciparum for the years from 2010 till 2022. Also a graph of trend in malaria deaths for the same years has been displayed.\n
+        DHS Malaria Indicators: \nUnder this category, we have the plot for some of the malaria prevention indicators.    
+        """)
+        
+        st.markdown("---------------------------------------------------")
+        x = "ITN_Coverage_2020"
+        combined_data = data[[x, 'Malaria_Incidence_2020', 'Malaria_Prevalence_2020']]
+
+        # Melt the DataFrame to have 'Malaria_Incidence_2020' and 'Malaria_Prevalence_2020' as a single variable
+        combined_data_melted = combined_data.melt(id_vars=[x], var_name='Indicator', value_name='Value')
+
+        # Plot using Plotly Express
+        fig = px.scatter(combined_data_melted, x=x, y='Value', color='Indicator')
+        fig.update_layout(title=f"Relation between Malaria Incidence/Prevalence and ITN Coverage",
+                        xaxis_title=x,
+                        yaxis_title="Value")
+
+        
+        # Show plotly chart in Streamlit
+        st.plotly_chart(fig)
+        st.write("The graph shows a negative correlation. This suggests that as the percentage of people with insecticide-treated bed nets increases, the malaria rates decrease. This aligns with the established effectiveness of ITNs in preventing mosquito bites and reducing malaria transmission.")
+        st.write("**Important Note**: correlation does not necessarily equal causation. There could be other factors that influence malaria incidence/prevalence that are not shown in this graph.")
+
+        st.write("For More information on the data, kindly refer to the 'The Geospatial Covariate Datasets Manual from DHS Program' in the User_Guide page.")
+        
         st.markdown("Guide to DHS Statistics: https://dhsprogram.com/Data/Guide-to-DHS-Statistics/index.cfm")
         st.markdown("---------------------------------------------------")
             
@@ -607,9 +671,16 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         st.subheader("Indicators related to ITN")
         # Plotly line chart
-        
+        with st.expander("**About**"):
+            st.write("Percentage of households with at least one mosquito net.")
+            st.write("Percentage of households with at least one ITN for every two persons who stayed in the household last night.")
+            st.write("Percentage of the population with access to an ITN: Percentage of the de facto household population with access to an ITN in the household, defined as the proportion of the de facto household population who slept under an ITN if each ITN in the household were used by up to two people.")
+            st.write("Percentage of the household population who slept the night before the survey under an insecticide-treated net (ITN).")
+            st.write("Percentage of children under age 5 who slept the night before the survey under an ITN the night before the survey.")
+            st.write("Percentage of children under age 5 who slept the night before the survey under an ITN in households with at least one ITN.")
+            st.write("Percentage of pregnant women age 15-49 who slept the night before the survey under an insecticide-treated net (ITN).")
         selected_indicators = st.multiselect("Select the indicators", df_malaria.columns[0:7])
-        button = st.button("Generate")
+        button = st.button("Plot")
         if button and selected_indicators:
             subset_df = df_malaria[selected_indicators]
             fig = px.line(subset_df, x= subset_df.index, y= selected_indicators,
@@ -624,7 +695,12 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         st.markdown("Source: https://dhsprogram.com/")
 
     elif subcategory == "DHS Malaria Indicators":
-        
+        with st.expander("**About**"):  
+            st.write("Percentage of children with hemoglobin lower than 8.0 g/dl: Percentage of children age 6-59 months who stayed in the household the night before the interview with hemoglobin lower than 8.0 g/dl.")
+            st.write("Percentage of children with fever in the 2 weeks preceding the survey for whom advice or treatment was sought:  Among children under age 5 years with fever in the 2 weeks preceding the survey, percentage for whom advice or treatment was sought the same or next day following the onset of fever.")
+            st.write("Percentage of children who took any ACT: Among children under age 5 years with fever in the 2 weeks preceding the survey who took any antimalarial medication, percentage who took specific antimalarial drugs:\
+                Any Artemisinin-based Combination Therapy (ACT)")
+            st.write("Percentage of women who, during pregnancy, received one or more doses of SP/Fansidar, received two or more doses of SP/Fansidar, and received three or more doses of SP/Fansidar:  Percentage of women age 15-49 with a live birth or a stillbirth in the 2 years preceding the survey who, during the pregnancy that resulted in the last live birth or stillbirth, received two or more doses of SP/Fansidar. And Percentage of women age 15-49 with a live birth or a stillbirth in the 2 years preceding the survey who, during the pregnancy that resulted in the last live birth or stillbirth, received three or more doses of SP/Fansidar.")
         # Plotly line chart
         selected_indicators = st.multiselect("Select the indicators", df_malaria.columns[8:13])
         button = st.button("Plot")
@@ -781,12 +857,68 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         st.dataframe(df_merged)
         st.markdown("Note: The missing values for the malaria deaths have been imputed with the mean value.")
 
-def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns,subcategory, diurnal_temp_data, precipitation_data):
+def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns,subcategory, diurnal_temp_data, precipitation_data, night_land_temp_data, surface_temp_data, day_land_temp_data):
     
     if subcategory == "About":
         st.write("About")
         st.markdown("-------------------------------------------------")
-        st.write("This category has the data for the below indicators: ")
+        
+        st.write("""There are nine subcategories under Climate category: Mean wet days,Rainfall, Mean temperature, Diurnal temperature, Average monthly precipitation, Average monthly temperature, Night land surface temperature, land surface temperature and Day land surface temperature.\n
+       
+        Mean wet days:\nUnder this category, we can see the Mean wet days in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Mean Temperature:\nUnder this category, we can see the Mean temperature in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Diurnal temperature:\nUnder this category, we can see the Diurnal temperature in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Average monthly temperature:\nUnder this category, the see the Average monthly temperature in children for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Average monthly precipitation:\nUnder this category, we can see the Average monthly precipitation in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Night land surface temperature:\nUnder this category, we can see the Night land surface temperature in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Day land surface temperature:\nUnder this category, we can see the Day land surface temperature in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        Land surface temperature:\nUnder this category, we can see the Land surface temperature in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+        """)
+        st.write("Choose the indicators in the selectbox below and see the relation between it and the Malaria Incidence and Malaria Prevalence for the year 2020")
+        chosen_category = st.selectbox("Select the indicator", ['Mean wet days','Rainfall','Mean Temperature','Diurnal Temperature','Average monthly precipitation', 'Night land surface temperature','Land surface temperature','Day land surface temperature'])
+        if chosen_category == "Mean wet days":
+            x = "Wet_Days_2020"
+            st.write("This graph shows an interesting relationship between rainfall and malaria rates. Areas with fewer wet days seem to have higher malaria rates. Possible explanations include alternative breeding sites in dry areas or effective water management practices. Further research is needed to understand the reasons behind this.")
+        elif chosen_category == "Rainfall":
+            x = "Rainfall_2020"
+            st.write("This graph shows an interesting relationship between rainfall and malaria rates. Areas with less rain seem to have higher malaria rates. Further research is needed to understand the reasons behind this.")
+        elif chosen_category == "Mean Temperature":
+            x = "Mean_Temperature_2020"
+            st.write("A negative correlation between mean temperature and malaria incidence/prevalence suggests that places with colder temperatures tend to have higher rates of malaria. This is interesting because warmer temperatures are often associated with increased mosquito activity and malaria transmission. Further research is needed to understand the reasons behind this.")
+        elif chosen_category == "Diurnal Temperature":
+            x = "Diurnal_Temperature_Range_2020"
+            st.write("There isn't a clear negative or positive correlation between diurnal temperature range and malaria incidence. By examining the data more closely and considering additional factors, you can get a clearer picture of the relationship between diurnal temperature range and malaria incidence.")
+        elif chosen_category == "Average monthly precipitation":
+            x = "Precipitation_2020"
+            st.write("The graph shows a  negative correlation between average monthly precipitation and malaria prevalence in 2020. This means places with higher average monthly precipitation tend to have lower malaria prevalence. This might be possibly due to better water management or fewer suitable breeding sites for mosquitoes. However, it's important to consider other factors and regional variations to draw more definitive conclusions.")
+        elif chosen_category == "Night land surface temperature":
+            x  = "Night_Land_Surface_Temp_2020"
+            st.write("the graph shows a  negative correlation between night land surface temperature (LST) and malaria incidence in 2020. This means places with warmer night temperatures tend to have lower malaria incidence. Overall, the negative correlation in this graph suggests that warmer night temperatures, within a certain range, might be associated with lower malaria incidence in this specific dataset. However, it's important to consider other factors and regional variations to draw more definitive conclusions.")
+        elif chosen_category == "Land surface temperature":
+            x = "Land_Surface_Temperature_2020"
+            st.write("While the scattered nature of the data makes it difficult to definitively determine the correlation, a downward trend could suggest a negative correlation between land surface temperature and malaria incidence. However, it's crucial to consider other factors and regional variations for a more complete picture.")
+        elif chosen_category == "Day land surface temperature":
+            x = "Day_Land_Surface_Temp_2020"
+            st.write("the plot shows a weak negative correlation between day land surface temperature (LST) and malaria incidence in 2020. This means that places with higher day land surface temperatures tend to have slightly lower malaria rates.\
+                However, the data points are scattered, so the correlation is not very strong. While the graph suggests a possible benefit from higher day land surface temperatures within a certain range, the scattered data and lack of a strong correlation make it difficult to draw definitive conclusions.\
+                It's important to consider other factors and regional variations to understand how day land surface temperature influences malaria rates.")
+                
+
+        # Combine 'Malaria_Incidence_2020' and 'Malaria_Prevalence_2020' into a single DataFrame
+        combined_data = data[[x, 'Malaria_Incidence_2020', 'Malaria_Prevalence_2020']]
+
+        # Melt the DataFrame to have 'Malaria_Incidence_2020' and 'Malaria_Prevalence_2020' as a single variable
+        combined_data_melted = combined_data.melt(id_vars=[x], var_name='Indicator', value_name='Value')
+
+        # Plot using Plotly Express
+        fig = px.scatter(combined_data_melted, x=x, y='Value', color='Indicator')
+        fig.update_layout(title=f"Relation between Malaria Incidence/Prevalence and {chosen_category}",
+                        xaxis_title=x,
+                        yaxis_title="Value")
+
+        # Show plotly chart in Streamlit
+        st.plotly_chart(fig)
+        st.write("**Important Note**: correlation does not necessarily equal causation. There could be other factors that influence malaria incidence/prevalence that are not shown in this graph.")
         st.write("For More information on the data, kindly refer to the 'The Geospatial Covariate Datasets Manual from DHS Program' in the User_Guide page.")
         st.markdown("-------------------------------------------------")
         
@@ -839,6 +971,32 @@ def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall
         st.info("Definition: \nThe average monthly precipitation measured at the DHS survey cluster location in a given year. (Millimeters per month")
         df2 = precipitation_data.groupby('DHSREGNA').mean()
     
+    elif subcategory == "Night land surface temperature":
+        variable = "Night_Land_Surface_Temp"
+        year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
+        st.subheader(f"Average monthly precipitation for the year {year}")
+        st.info("Definition: \nThe average nighttime land surface temperature at the DHS survey cluster location.The global LST [night] grids, represent night time temperature in degree Celsius at a spatial\
+            resolution of 0.05° × 0.05°. At night, the land surface typically cools off\
+            because it releases its warmth to the air above while no longer receiving sunlight")
+        df2 = night_land_temp_data.groupby('DHSREGNA').mean()
+
+    elif subcategory == "Day land surface temperature":
+        variable = "Day_Land_Surface_Temp"
+        year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
+        st.subheader(f"Mean Annual daytime land surface temperature for the year {year}")
+        st.info("Definition: \nThe mean annual daytime land surface at the DHS survey cluster location.\
+            Land surface temperature (LST) estimates the temperature of the land surface (skin temperature), which is detected by satellites by looking through the atmosphere to the ground.")
+        df2 = day_land_temp_data.groupby('DHSREGNA').mean()
+    
+    elif subcategory == "Land surface temperature":
+        variable = "Land_Surface_Temperature"
+        year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
+        st.subheader(f"Average annual land surface temperature for the year {year}")
+        st.info("Definition: \nThe average annual land surface temperature at the DHS survey cluster location.\
+            Land surface temperature (LST) estimates the temperature of the land surface (skin temperature), which is detected by satellites via looking through the atmosphere to the ground. The LST is not\
+            equivalent to near-surface air temperature measured by ground stations, and their relationship is complex from a theoretical and empirical perspective.")
+        df2 = surface_temp_data.groupby('DHSREGNA').mean()
+    
     if subcategory != "About":
         m = folium.Map(location=[data['LATNUM'].mean(), data['LONGNUM'].mean()], zoom_start=8)
         if subcategory in ['Mean wet days','Diurnal Temperature','Average monthly precipitation']:
@@ -858,7 +1016,7 @@ def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall
             
         
         for index, row in data.iterrows():
-            if subcategory in ['Mean wet days','Rainfall','Mean Temperature','Diurnal Temperature','Average monthly precipitation']:
+            if subcategory in ['Mean wet days','Rainfall','Mean Temperature','Diurnal Temperature','Average monthly precipitation', 'Night land surface temperature','Land surface temperature','Day land surface temperature']:
                 indicator = row[f'{variable}_{year}']
             else:
                 indicator = row[f'{variable}_{month}']
@@ -909,7 +1067,7 @@ def visualization_category_4(data, subcategory, evi_data, pet_data, aridity_data
     # Add your visualization for category 3 here
     if subcategory == "Enhanced vegetation index":
         variable = "Enhanced_Vegetation_Index"
-        st.subheader(f"{subcategory}")
+        st.subheader(f"{subcategory} for the year {year}")
         
         st.info("The average vegetation index value at the DHS survey cluster at the time of measurement (year).\
             Vegetation index value between -1 (least vegetation) and 1 (most vegetation).")
@@ -984,16 +1142,42 @@ def visualization_category_4(data, subcategory, evi_data, pet_data, aridity_data
     else:
         st.markdown("About")
         st.markdown("-----------------------------------------")
-        st.write("The page on Agriculture has been divided into three subcategories: \
-            1)Enhanced vegetation index,\
-            2)Potential Evapotranspiration and \
-            3)Aridity Index.\
-                The map of Liberia is displayed for the years 2000, 2005, 2010, 2015 and 2020.This data has been obtained from The DHS Program.\
-            ")
+        st.write("""This category has been divided into three subcategories: \n
+            1)Enhanced vegetation index : \nUnder this category, we can see the Enhanced vegetation index in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+            2)Potential Evapotranspiration: \nUnder this category, we can see the Potential Evapotranspiration in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+            3)Aridity Index: \nUnder this category, we can see the Aridity Index in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
+            """)
+        st.write("Choose the indicators in the selectbox below and see the relation between it and the Malaria Incidence and Malaria Prevalence for the year 2020")
+        chosen_category = st.selectbox("Select the indicator", ['Enhanced vegetation index','Potential Evapotranspiration','Aridity index'])
+        if chosen_category == "Enhanced vegetation index":
+            x = "Enhanced_Vegetation_Index_2020"
+            st.write("While the scattered nature of the data makes it difficult to definitively determine the correlation, an upward trend suggests a positive correlation between EVI and malaria prevalence. However, it's crucial to consider other factors and regional variations for a more complete picture.")
+        elif chosen_category == "Potential Evapotranspiration":
+            x = "PET_2020"
+            st.write("The negative correlation in this graph suggests that areas with higher potential evapotranspiration might be associated with lower malaria incidence, possibly due to fewer suitable breeding sites for mosquitoes. However, it's important to consider other factors and regional variations to draw more definitive conclusions.")
+        elif chosen_category == "Aridity index":
+            x = "Aridity_2020"
+            st.write("The negative correlation in this graph suggests that areas with higher aridity (drier areas) might be associated with lower malaria incidence, possibly due to fewer suitable breeding sites or a less favorable climate for mosquitoes. However, it's crucial to consider other factors and regional variations to draw more definitive conclusions.")
+        # Combine 'Malaria_Incidence_2020' and 'Malaria_Prevalence_2020' into a single DataFrame
+        combined_data = data[[x, 'Malaria_Incidence_2020', 'Malaria_Prevalence_2020']]
+
+        # Melt the DataFrame to have 'Malaria_Incidence_2020' and 'Malaria_Prevalence_2020' as a single variable
+        combined_data_melted = combined_data.melt(id_vars=[x], var_name='Indicator', value_name='Value')
+
+        # Plot using Plotly Express
+        fig = px.scatter(combined_data_melted, x=x, y='Value', color='Indicator')
+        fig.update_layout(title=f"Relation between Malaria Incidence/Prevalence and {chosen_category}",
+                        xaxis_title=x,
+                        yaxis_title="Value")
+
+        # Show plotly chart in Streamlit
+        st.plotly_chart(fig)
+        st.write("**Important Note**: correlation does not necessarily equal causation. There could be other factors that influence malaria incidence/prevalence that are not shown in this graph.")
+        st.write("For More information on the data, kindly refer to the 'The Geospatial Covariate Datasets Manual from DHS Program' in the User_Guide page.")
         st.markdown("-----------------------------------------")
 
 
-def visualization_category_5(data, subcategory, df_agri):
+def visualization_category_5(data, subcategory, df_agri, df_children_malaria):
         
     if subcategory == "Households with farm animals and agricultural land based on 2019-20 DHS Survey":
         df_agri = df_agri.loc[np.where(df_agri['Survey'] == "2019-20 DHS")] #Selecting the MIS 2022 Survey data
@@ -1001,7 +1185,7 @@ def visualization_category_5(data, subcategory, df_agri):
         groups_counties = [val for val in df_agri['Characteristic'].values if val.startswith('Groups of Counties')]
         counties = [val for val in df_agri['Characteristic'].values if val.startswith('Counties')]
         st.subheader("2019-20 DHS Survey data")
-        st.markdown("Choose the category in the sidebar. There are four categories: 'Group of Counties','Counties','Wealth quintiles' and 'Residence type'. The graph and the data changes here as per the chosen category.")
+        st.markdown("Choose the category in the sidebar. There are four categories: 'Group of Counties', 'Counties', 'Wealth quintiles' and 'Residence type'. The graph and the data changes here as per the chosen category.")
         select_cat = st.sidebar.selectbox("Choose the category", ['Group of Counties', 'Counties','Wealth quintiles','Residence type'])
         if select_cat == "Residence type":
             df_subset = df_agri[1:3].copy()  # Ensure to make a copy to avoid modifying the original DataFrame
@@ -1041,7 +1225,7 @@ def visualization_category_5(data, subcategory, df_agri):
     elif subcategory == "Households with farm animals and agricultural land based on 2022 MIS":
         df_agri = df_agri.loc[np.where(df_agri['Survey'] == "2022 MIS")] #Selecting the MIS 2022 Survey data
         st.subheader("2022 MIS Survey data")
-        st.markdown("Choose the category in the sidebar. There are three categories: 'Group of Counties','Wealth quintiles' and 'Residence type'. The graph and the data changes here as per the chosen category.")
+        st.markdown("Choose the category in the sidebar. There are three categories: 'Group of Counties', 'Wealth quintiles' and 'Residence type'. The graph and the data changes here as per the chosen category.")
         select_cat = st.sidebar.selectbox("Choose the category", ['Group of Counties','Wealth quintiles','Residence type'])
         if select_cat == "Group of Counties":
             df_subset = df_agri[8:13].copy()  # Ensure to make a copy to avoid modifying the original DataFrame
@@ -1073,20 +1257,60 @@ def visualization_category_5(data, subcategory, df_agri):
             * Wealth quintiles : Second >Lowest > middle >Fourth > Highest
             * Residence : Rural > Urban
             """)
+    
+    elif subcategory == "About":
+        def extract_numeric_value(text):
+            match = re.search(r'(\d+\.\d+)',text)
+            if match:
+                return float(match.group(0))
+            else:
+                return None
+
+        df_children_malaria['Malaria prevalence according to RDT'] = df_children_malaria['Malaria prevalence according to RDT'].apply(extract_numeric_value)
+        df_children_malaria['Malaria prevalence according to microscopy'] = df_children_malaria['Malaria prevalence according to microscopy'].apply(extract_numeric_value)
+        df_2022_MIS = df_children_malaria.loc[np.where(df_children_malaria['Survey']=='2022 MIS')]
+        data1 = df_agri.loc[np.where(df_agri['Survey'] == "2022 MIS")]
+        merged_df = pd.merge(data1, df_2022_MIS.drop(columns=['Country','Survey']), on='Characteristic', how='inner')
+        
+        st.subheader("About")
+        st.markdown("---------------------------------------------")
+        st.write("""Under this category, we have the information displayed in the form of charts for below:
+            1)Households with farm animals, and 2)Household owning agricultural land in Liberia based on MIS 2022 and 2019-20 DHS Surveys.
+            Below plots shows the relation between these and the Malaria prevalence according to RDT and Malaria prevalence according to microscopy.""")
+        x = st.selectbox("Select the indicator", ['Households owning farm animals','Households owning agricultural land'])
+        # Combine into a single DataFrame
+        combined_data = merged_df[[x, 'Malaria prevalence according to RDT', 'Malaria prevalence according to microscopy']]
+
+        # Melt the DataFrame 
+        combined_data_melted = combined_data.melt(id_vars=[x], var_name='Indicator', value_name='Value')
+
+        # Plot using Plotly Express
+        fig = px.scatter(combined_data_melted, x=x, y='Value', color='Indicator')
+        fig.update_layout(title=f"Relation between Malaria prevalence according to microscopy/RDT and {x}",
+                        xaxis_title=x,
+                        yaxis_title="Value")
+
+        # Show plotly chart in Streamlit
+        st.plotly_chart(fig)
+        with st.expander("Data"):
+            st.dataframe(merged_df.iloc[:,:7])
+        st.write("**Important Note**: correlation does not necessarily equal causation. It's crucial to consider other factors and regional variations for a more complete picture.")
+        
+        st.markdown("---------------------------------------------")
 
 def main():
     
     # Set the theme to dark mode
     st.set_page_config(page_title="Liberia_statistics", page_icon=":bar_chart:", layout="wide", initial_sidebar_state="expanded")
     st.title("Liberia Statistics")
-    data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria, aridity_data, df_malaria, diurnal_temp_data, precipitation_data = read_dataset()
+    data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria, aridity_data, df_malaria, diurnal_temp_data, precipitation_data, night_land_temp_data, surface_temp_data, day_land_temp_data = read_dataset()
 
     # Define main categories and their corresponding subcategories
     categories = {
         'Demography': ['UN Population Density','Under-5 Population','Population'],
         'Health': ['Health facilities', 'ITN Coverage', 'Malaria Incidence','Malaria Prevalence','Malaria prevalence in children(6-59) months', 'Malaria cases by Species', 'DHS Malaria Indicators'],
         'Environment': ['Enhanced vegetation index','Potential Evapotranspiration','Aridity Index'],
-        'Climate':['Mean wet days','Rainfall','Mean Temperature','Diurnal Temperature','Average monthly temperature','Average monthly precipitation'],
+        'Climate':['Mean wet days','Rainfall','Mean Temperature','Diurnal Temperature','Average monthly temperature','Average monthly precipitation','Night land surface temperature','Land surface temperature','Day land surface temperature'],
         'Agriculture':['Households with farm animals and agricultural land based on 2022 MIS','Households with farm animals and agricultural land based on 2019-20 DHS Survey']
         # Add more main categories and subcategories as needed
     }
@@ -1104,11 +1328,11 @@ def main():
     elif main_category == "Health":
         visualization_category_2(data,malaria_data,itn_data,columns,subcategory,malaria_prevalence_data, df_children_malaria, df_demography, df_malaria)
     elif main_category == "Climate":
-        visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns,subcategory, diurnal_temp_data, precipitation_data)
+        visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns,subcategory, diurnal_temp_data, precipitation_data, night_land_temp_data, surface_temp_data, day_land_temp_data)
     elif main_category == "Environment":
         visualization_category_4(data,subcategory,evi_data, pet_data, aridity_data)
     elif main_category == "Agriculture":
-        visualization_category_5(data, subcategory, df_agri)
+        visualization_category_5(data, subcategory, df_agri, df_children_malaria)
     
 if __name__=="__main__":
     main()
