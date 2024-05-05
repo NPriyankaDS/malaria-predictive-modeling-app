@@ -1,3 +1,8 @@
+"""
+Created on Sat Apr 2024
+
+@author: N Priyanka 
+"""
 import streamlit as st
 import geopandas as gpd
 import pandas as pd
@@ -226,7 +231,7 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
 
         # Display the interactive plot
         plot_interactive_line_chart(df1)
-        st.markdown("Source: https://dhsprogram.com/")
+        st.markdown("Source: [The DHS Program](https://dhsprogram.com/)")
 
     
         
@@ -331,7 +336,7 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
             y1 = ['Population ages 0-14, total','Population ages 15-64, total', 'Population ages 65 and above, total']
             fig = px.line(df_demography, x='Year', y=y1, title="Population Distribution Over Time")
             st.plotly_chart(fig)
-        st.markdown("Source: https://datacatalog.worldbank.org/public-licenses#cc-by")
+        st.markdown("Source: [World Bank Data catalog](https://datacatalog.worldbank.org/home)")
 
 
     else:
@@ -375,7 +380,7 @@ def visualization_category_1(data,subcategory,pop_density_data, df_demography):
         # Show plotly chart in Streamlit
         st.plotly_chart(fig)
         st.write("**Important Note**: correlation does not necessarily equal causation. There could be other factors that influence malaria incidence/prevalence that are not shown in this graph.")
-        st.write("For More information on the data, kindly refer to the 'The Geospatial Covariate Datasets Manual from DHS Program' in the User_Guide page.")
+        st.write("For More information on the data, kindly refer to the [The Geospatial Covariate Datasets Manual from DHS Program](https://spatialdata.dhsprogram.com/references/DHS_Covariates_Extract_Data_Description_3.pdf) for more information.")
         st.markdown("-------------------------------------------------")
         
 
@@ -416,9 +421,9 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         st.write("The graph shows a negative correlation. This suggests that as the percentage of people with insecticide-treated bed nets increases, the malaria rates decrease. This aligns with the established effectiveness of ITNs in preventing mosquito bites and reducing malaria transmission.")
         st.write("**Important Note**: correlation does not necessarily equal causation. There could be other factors that influence malaria incidence/prevalence that are not shown in this graph.")
 
-        st.write("For More information on the data, kindly refer to the 'The Geospatial Covariate Datasets Manual from DHS Program' in the User_Guide page.")
+        st.write("For More information on the data, kindly refer to the [The Geospatial Covariate Datasets Manual from DHS Program](https://spatialdata.dhsprogram.com/references/DHS_Covariates_Extract_Data_Description_3.pdf) for more information.")
         
-        st.markdown("Guide to DHS Statistics: https://dhsprogram.com/Data/Guide-to-DHS-Statistics/index.cfm")
+        st.markdown("[Guide to DHS Statistics](https://dhsprogram.com/Data/Guide-to-DHS-Statistics/index.cfm)")
         st.markdown("---------------------------------------------------")
             
     elif subcategory =="Malaria Incidence":
@@ -472,7 +477,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         # Display the interactive plot
         plot_interactive_line_chart(df1)
-        st.markdown("Source: https://dhsprogram.com/")
+        st.markdown("Source: [The DHS Program](https://dhsprogram.com/)")
         
     elif subcategory == "Malaria Prevalence":
         
@@ -525,7 +530,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         # Display the interactive plot
         plot_interactive_line_chart(df2)
-        st.markdown("Source: https://dhsprogram.com/")
+        st.markdown("Source: [The DHS Program](https://dhsprogram.com/)")
 
     elif subcategory == "Malaria prevalence in children(6-59) months":
         # Define a function to extract numeric values from the strings
@@ -546,7 +551,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
                         "Number of children 6-59 months tested using RDT: ","Number of children age 6-59 months tested for malaria using a rapid diagnostic test (RDT)\n\n",
                         "Malaria prevalence according to microscopy : " "Number of children age 6-59 months tested for malaria using a rapid diagnostic test (RDT) (unweighted)\n\n" 
                         "Number of children 6-59 months tested using microscopy: ","Percentage of children age 6-59 months tested using microscopy who are positive for malaria. The confidence intervals (CIs) presented may differ from CIs in DHS and MIS final reports as the CIs in STATcompiler were calculated using the Jackknife Estimation Method rather the Taylor Series Linearization Method used in DHS and MIS final reports. \n\n"
-                        "Source: ICF, 2015. The DHS Program STATcompiler. Funded by USAID. http://www.statcompiler.com. February 22 2024")
+                        "Source: ICF, 2015. [The DHS Program STATcompiler](http://www.statcompiler.com), Funded by USAID, February 22 2024")
         
         st.markdown("Choose the category in the sidebar. There are six categories: Group of Counties, Age group, Gender, Education level, Wealth quintiles and Residence type. The graph and the data changes here as per the chosen category.")
         select_cat = st.sidebar.selectbox("Choose the category", ['Group of Counties', 'Age group', 'Gender', 'Education level', 'Wealth quintiles','Residence type'])
@@ -607,7 +612,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
                 6) Wealth quintile : Lowest > Second > Middle > Fourth > Highest
 
                 """)
-            st.markdown("Source: The DHS Program STATcompiler. Funded by USAID. http://www.statcompiler.com. February 22 2024")
+            st.markdown("Source: [The DHS Program STATcompiler](http://www.statcompiler.com), Funded by USAID. February 22 2024")
             
     elif subcategory == "ITN Coverage": 
         year = st.sidebar.selectbox("Select the year", options= ['2000', '2005', '2010', '2015', '2020'])
@@ -692,7 +697,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
             st.dataframe(subset_df)
             st.write("Note: The data for the year 2019 is the data for 2019-20")
 
-        st.markdown("Source: https://dhsprogram.com/")
+        st.markdown("Source: [The DHS Program](https://dhsprogram.com/)")
 
     elif subcategory == "DHS Malaria Indicators":
         with st.expander("**About**"):  
@@ -715,8 +720,8 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
             st.dataframe(subset_df)
             st.write("Note: The data for the year 2019 is the data for 2019-20")
 
-        st.markdown("Source: https://dhsprogram.com/")
-        st.markdown("Guide to DHS Statistics: https://dhsprogram.com/Data/Guide-to-DHS-Statistics/index.cfm")
+        st.markdown("Source:[The DHS Program](https://dhsprogram.com/)")
+        st.markdown("[Guide to DHS Statistics](https://dhsprogram.com/Data/Guide-to-DHS-Statistics/index.cfm)")
 
     elif subcategory == "Health facilities":
         
@@ -824,7 +829,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 
         #save to an HTML file to open in a browser
         folium_static(m1)
-        st.markdown("Source: https://data.humdata.org/dataset/hotosm_lbr_health_facilities?")
+        st.markdown("Source: [Humanitarian Data Exchange](https://data.humdata.org/dataset/hotosm_lbr_health_facilities?)")
 
     elif subcategory == "Malaria cases by Species":
         df = {
@@ -919,7 +924,7 @@ def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall
         # Show plotly chart in Streamlit
         st.plotly_chart(fig)
         st.write("**Important Note**: correlation does not necessarily equal causation. There could be other factors that influence malaria incidence/prevalence that are not shown in this graph.")
-        st.write("For More information on the data, kindly refer to the 'The Geospatial Covariate Datasets Manual from DHS Program' in the User_Guide page.")
+        st.write("For More information on the data, kindly refer to the [The Geospatial Covariate Datasets Manual from DHS Program](https://spatialdata.dhsprogram.com/references/DHS_Covariates_Extract_Data_Description_3.pdf) for more information.")
         st.markdown("-------------------------------------------------")
         
 
@@ -1059,7 +1064,7 @@ def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall
 
         # Display the interactive plot
         plot_interactive_line_chart(df2)
-        st.markdown("Source: https://dhsprogram.com/")
+        st.markdown("Source: [The DHS Program](https://dhsprogram.com/)")
 
 
 def visualization_category_4(data, subcategory, evi_data, pet_data, aridity_data):
@@ -1137,7 +1142,7 @@ def visualization_category_4(data, subcategory, evi_data, pet_data, aridity_data
 
         # Display the interactive plot
         plot_interactive_line_chart(df1)
-        st.markdown("Source: https://dhsprogram.com/")
+        st.markdown("Source: [The DHS Program](https://dhsprogram.com/)")
     
     else:
         st.markdown("About")
@@ -1173,7 +1178,7 @@ def visualization_category_4(data, subcategory, evi_data, pet_data, aridity_data
         # Show plotly chart in Streamlit
         st.plotly_chart(fig)
         st.write("**Important Note**: correlation does not necessarily equal causation. There could be other factors that influence malaria incidence/prevalence that are not shown in this graph.")
-        st.write("For More information on the data, kindly refer to the 'The Geospatial Covariate Datasets Manual from DHS Program' in the User_Guide page.")
+        st.write("For More information on the data, kindly refer to the [The Geospatial Covariate Datasets Manual from DHS Program](https://spatialdata.dhsprogram.com/references/DHS_Covariates_Extract_Data_Description_3.pdf) for more information.")
         st.markdown("-----------------------------------------")
 
 
