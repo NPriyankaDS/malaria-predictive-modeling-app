@@ -19,7 +19,7 @@ import plotly.express as px
 # url = "https://raw.githubusercontent.com/M4riaLoureiro/malaria-predictive-modeling-app/eda_vivien/pages/data/precipitation_intervention_cases.csv"
 # meta_url = "https://raw.githubusercontent.com/M4riaLoureiro/malaria-predictive-modeling-app/eda_vivien/pages/data/precipitation_intervention_cases_metadata.csv"
 # =============================================================================
-data_folder = "data/"
+data_folder = "./data/"
 url = data_folder + "precipitation_intervention_cases.csv"
 meta_url = data_folder + "precipitation_intervention_cases_metadata.csv"
 video1_url = data_folder + "liberia_malaria_cases.mp4"
@@ -56,9 +56,9 @@ def formatTimeSeriesDf(df):
     
 # plot annual trends in precipitation data
 def plotTrendsWithPlotly(df, variable, variable_text):
-  title = f"{variable_text} trend from year 2010 - 2020 by county"
-  fig = px.line(df, x="Year", y=variable, title=title, color="County", markers=True)
-  return fig
+    title = f"{variable_text} trend from year 2010 - 2020 by county"
+    fig = px.line(df, x="Year", y=variable, title=title, color="County", markers=True)
+    return fig
 
 # plot 10-days trends in precipitation data
 def plotTrendsWithSeaborn(data, variable, variable_text):
