@@ -107,7 +107,7 @@ header_text1 = "Rainfall, Intervention and Malaria statistics in Liberia,"
 header_text2 = f" {min_year} to {max_year}"
 purpose_text = "We aim to provide users a greater understanding of factors, such as rainfall and interventions from health organizations, which covers IRS (Indoor Residual Spraying), ITN (Insecticide Treated Net) and medical treatments, to show how these factors influence the number of malaria cases and deaths across Liberia."
 video_text = "The following time lapse video highlights the number of malaria cases across various counties, from highest to lowest. As such, we hope this video could provide users some useful insights on the counties that are in dire need of intervention from health authorities in their effort to control and combat malaria."
-st.header(header_text1 + header_text2)
+st.header(header_text1 + header_text2 + ":rain_cloud:")
 st.write(purpose_text)
 st.write(video_text)
 with st.expander("Watch video:", expanded=True):

@@ -13,7 +13,7 @@ import plotly.express as px
 
 #font_modifier.make_font_poppins()
 
-st.markdown("# Impact of Malaria in Liberia")
+st.markdown("# :bulb: Impact of Malaria in Liberia")
 
 st.markdown("""
 
