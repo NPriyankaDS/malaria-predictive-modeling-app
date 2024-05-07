@@ -7,7 +7,7 @@ from page_utils import font_modifier, display_image
 ################### HEADER SECTION #######################
 display_image.display_image('https://cdn-images-1.medium.com/max/800/0*vBDO0wwrvAIS5e1D.png')
 
-st.markdown("<h1 style='text-align: center; color: #F5EFE6;'>Develop an AI-powered App for Predictive Modeling and Forecasting of Malaria Prevention in Liberia</h1>",
+st.markdown("<h1 style='text-align: center; '>Develop an AI-powered App for Predictive Modeling and Forecasting of Malaria Prevention in Liberia</h1>",
             unsafe_allow_html=True)
 
 display_image.display_image('./static/home_page_cover.jpg')
