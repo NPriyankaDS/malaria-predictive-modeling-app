@@ -1307,7 +1307,7 @@ def main():
     
     # Set the theme to dark mode
     st.set_page_config(page_title="Liberia_statistics", page_icon=":bar_chart:", layout="wide", initial_sidebar_state="expanded")
-    st.title("Liberia Statistics")
+    st.title("Liberia Statistics :bar_chart:")
     data, malaria_data, itn_data, columns, wet_days_columns, month_temp_columns, rainfall_columns, malaria_prevalence_data, pop_density_data, evi_data, pet_data, df_demography, df_agri, df_children_malaria, aridity_data, df_malaria, diurnal_temp_data, precipitation_data, night_land_temp_data, surface_temp_data, day_land_temp_data = read_dataset()
 
     # Define main categories and their corresponding subcategories
