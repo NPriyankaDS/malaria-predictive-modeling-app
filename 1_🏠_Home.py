@@ -13,7 +13,7 @@ st.markdown("<h1 style='text-align: center; '>Develop an AI-powered App for Pred
 display_image.display_image('./static/home_page_cover.jpg')
 
 ################### INFORMATION SECTION #######################
-st.header('Challenge Background')
+st.header('🌊 Challenge Background')
 st.markdown(
             """
             <style>
@@ -28,7 +28,7 @@ st.markdown(
             """
             ,unsafe_allow_html=True)
 
-st.header('The Problem')
+st.header('🧩 The Problem')
 st.markdown(
             """
             <style>
@@ -43,7 +43,7 @@ st.markdown(
             """
             ,unsafe_allow_html=True)
 
-st.header('Goal of the Project')
+st.header('🎯 Goal of the Project')
 st.markdown(
             """
             <style>
@@ -52,7 +52,7 @@ st.markdown(
                 text-align: justify;  /* Add this line */
             }
             </style>
-            <div class="tab" style="text-align=justify;">The goal of this project is to develop an AI-powered app that utilizes predictive modeling and forecasting techniques to enhance malaria prevention efforts in Liberia. The app should incorporate three key functionalities: - Predicting malaria transmission risk: Identify areas and populations at high risk of malaria outbreaks based on historical data, climate patterns, and human behavior. - Forecasting malaria outbreaks: Predict the timing and severity of future malaria outbreaks using real-time data on weather patterns, mosquito populations, and human mobility. - Identifying environmental and social determinants of malaria: Analyze large datasets to identify factors that contribute to malaria transmission and vulnerability, informing broader interventions. The development of an AI-powered app for predictive modeling and forecasting of malaria prevention in Liberia will require a range of AI tools and technologies. Here are some of the key tools that will be needed: - Machine learning algorithms: These algorithms will be used to analyze historical data on malaria transmission, climate patterns, and human behavior to identify areas at high risk of malaria outbreaks, forecast the timing and severity of future outbreaks.                    - Data visualization tools: These tools will be used to display the results of the AI analyses in a user-friendly way, such as using maps, charts, or graphs. This will make it easier for public health officials and other users to understand the information and act. </div>
+            <div class="tab" style="text-align=justify;">The goal of this project is to develop an AI-powered app that utilizes predictive modeling and forecasting techniques to enhance malaria prevention efforts in Liberia. The app should incorporate three key functionalities: 1)Predicting malaria transmission risk: Identify areas and populations at high risk of malaria outbreaks based on historical data, climate patterns, and human behavior. 2)Forecasting malaria outbreaks: Predict the timing and severity of future malaria outbreaks using real-time data on weather patterns, mosquito populations, and human mobility. 3)Identifying environmental and social determinants of malaria: Analyze large datasets to identify factors that contribute to malaria transmission and vulnerability, informing broader interventions. The development of an AI-powered app for predictive modeling and forecasting of malaria prevention in Liberia will require a range of AI tools and technologies. Here are some of the key tools that will be needed: - Machine learning algorithms: These algorithms will be used to analyze historical data on malaria transmission, climate patterns, and human behavior to identify areas at high risk of malaria outbreaks, forecast the timing and severity of future outbreaks.                    - Data visualization tools: These tools will be used to display the results of the AI analyses in a user-friendly way, such as using maps, charts, or graphs. This will make it easier for public health officials and other users to understand the information and act.</div>
             <p></p>
             
             """
