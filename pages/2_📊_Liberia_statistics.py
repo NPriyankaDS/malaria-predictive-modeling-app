@@ -388,7 +388,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
     # Add your visualization for category 2 here
 
     if subcategory == "About":
-        st.write("**About**")
+        st.subheader("**About**")
         
         st.markdown("---------------------------------------------------")
         st.write("""There are seven subcategories under Health category: 
@@ -851,12 +851,14 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
         st.plotly_chart(fig)
         
         st.markdown("Note: The missing values have been imputed with the mean values of the respective cases by species.")
+        st.write("Source: [World Malaria Report 2023- Annex 4J](https://www.who.int/teams/global-malaria-programme/reports/world-malaria-report-2023)")
         df_demography = df_demography.copy()[0:13]
         df_demography['malaria_deaths'] = df_demography['malaria_deaths'].fillna(df_demography['malaria_deaths'].mean())
         fig = px.line(df_demography, x='Year', y='malaria_deaths', title='Malaria Deaths Over Time')
 
         # Display the plot using streamlit's plotly_chart
         st.plotly_chart(fig)
+        st.write("Source: [World Malaria Report 2023 - Annex 4I](https://www.who.int/teams/global-malaria-programme/reports/world-malaria-report-2023)")
         df_demo = df_demography[['Year','malaria_deaths']][0:13]
         df_merged =pd.merge(df,df_demo,on='Year',how='inner')
         st.dataframe(df_merged)
@@ -865,7 +867,7 @@ def visualization_category_2(data,malaria_data,itn_data,columns,subcategory,mala
 def visualization_category_3(data,wet_days_columns, month_temp_columns, rainfall_columns,subcategory, diurnal_temp_data, precipitation_data, night_land_temp_data, surface_temp_data, day_land_temp_data):
     
     if subcategory == "About":
-        st.write("About")
+        st.subheader("**About**")
         st.markdown("-------------------------------------------------")
         
         st.write("""There are nine subcategories under Climate category: Mean wet days,Rainfall, Mean temperature, Diurnal temperature, Average monthly precipitation, Average monthly temperature, Night land surface temperature, land surface temperature and Day land surface temperature.\n
@@ -1145,7 +1147,7 @@ def visualization_category_4(data, subcategory, evi_data, pet_data, aridity_data
         st.markdown("Source: [The DHS Program](https://dhsprogram.com/)")
     
     else:
-        st.markdown("About")
+        st.subheader("About")
         st.markdown("-----------------------------------------")
         st.write("""This category has been divided into three subcategories: \n
             1)Enhanced vegetation index : \nUnder this category, we can see the Enhanced vegetation index in Liberia on the map for the years 2000, 2005, 2010, 2015 and 2020.\n
