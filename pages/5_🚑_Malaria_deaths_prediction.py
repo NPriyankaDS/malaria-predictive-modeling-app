@@ -53,13 +53,13 @@ def main():
     with col1:
         rfh = st.number_input("**10 day rainfall [mm]**",min_value=0.0)
     with col2:
-        rfh_avg = st.number_input("**Rainfall 1-month rolling aggregation [mm]**",min_value=0.0)
+        rfh_avg = st.number_input("**Rainfall long term average [mm]**",min_value=0.0)
     with col3:
-        r1h = st.number_input("**Rainfall 3-month rolling aggregation [mm]**",min_value=0.0)
+        r1h = st.number_input("**Rainfall 1-month rolling aggregation [mm]**",min_value=0.0)
     with col1:
-        r1h_avg = st.number_input("**Rainfall long term average [mm]**",min_value=0.0)
+        r1h_avg = st.number_input("**Rainfall 1-month rolling aggregation long term average [mm]**",min_value=0.0)
     with col2:
-        r3h = st.number_input("**Rainfall 1-month rolling aggregation long term average [mm]**",min_value=0.0)
+        r3h = st.number_input("**Rainfall 3-month rolling aggregation [mm]**",min_value=0.0)
     with col3:
         r3h_avg = st.number_input("**Rainfall 3-month rolling aggregation long term average [mm]**",min_value=0.0)
     with col1:
